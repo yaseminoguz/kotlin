@@ -118,6 +118,7 @@ class JsIrBackendContext(
         private val COROUTINE_PACKAGE_FQNAME_12 = FqName.fromSegments(listOf("kotlin", "coroutines", "experimental"))
         private val COROUTINE_PACKAGE_FQNAME_13 = FqName.fromSegments(listOf("kotlin", "coroutines"))
         private val COROUTINE_PACKAGE_FQNAME = COROUTINE_PACKAGE_FQNAME_13
+        private val WORKER_PACKAGE_FQNAME = FqName.fromSegments(listOf("kotlin", "worker"))
         private val COROUTINE_INTRINSICS_PACKAGE_FQNAME = COROUTINE_PACKAGE_FQNAME.child(INTRINSICS_PACKAGE_NAME)
 
         // TODO: due to name clash those weird suffix is required, remove it once `MemberNameGenerator` is implemented
@@ -130,6 +131,7 @@ class JsIrBackendContext(
     private val internalPackage = module.getPackage(JS_PACKAGE_FQNAME)
 
     private val coroutinePackage = module.getPackage(COROUTINE_PACKAGE_FQNAME)
+    private val workerPackage = module.getPackage(WORKER_PACKAGE_FQNAME)
     private val coroutineIntrinsicsPackage = module.getPackage(COROUTINE_INTRINSICS_PACKAGE_FQNAME)
 
     val enumEntryToGetInstanceFunction = mutableMapOf<IrEnumEntrySymbol, IrSimpleFunction>()
@@ -156,38 +158,7 @@ class JsIrBackendContext(
     fun getOperatorByName(name: Name, type: IrSimpleType) = operatorMap[name]?.get(type.classifier)
 
     override val ir = object : Ir<JsIrBackendContext>(this, irModuleFragment) {
-        override val symbols = object : Symbols<JsIrBackendContext>(this@JsIrBackendContext, symbolTable.lazyWrapper) {
-            override val ThrowNullPointerException =
-                symbolTable.referenceSimpleFunction(getFunctions(kotlinPackageFqn.child(Name.identifier("THROW_NPE"))).single())
-
-            override val ThrowNoWhenBranchMatchedException =
-                symbolTable.referenceSimpleFunction(getFunctions(kotlinPackageFqn.child(Name.identifier("noWhenBranchMatchedException"))).single())
-
-            override val ThrowTypeCastException =
-                symbolTable.referenceSimpleFunction(getFunctions(kotlinPackageFqn.child(Name.identifier("THROW_CCE"))).single())
-
-            override val ThrowUninitializedPropertyAccessException =
-                symbolTable.referenceSimpleFunction(getFunctions(FqName("kotlin.throwUninitializedPropertyAccessException")).single())
-
-            override val defaultConstructorMarker =
-                symbolTable.referenceClass(context.getJsInternalClass("DefaultConstructorMarker"))
-
-            override val stringBuilder
-                get() = TODO("not implemented")
-            override val copyRangeTo: Map<ClassDescriptor, IrSimpleFunctionSymbol>
-                get() = TODO("not implemented")
-            override val coroutineImpl =
-                symbolTable.referenceClass(findClass(coroutinePackage.memberScope, COROUTINE_IMPL_NAME))
-            override val coroutineSuspendedGetter =
-                symbolTable.referenceSimpleFunction(
-                    coroutineIntrinsicsPackage.memberScope.getContributedVariables(
-                        COROUTINE_SUSPENDED_NAME,
-                        NoLookupLocation.FROM_BACKEND
-                    ).filterNot { it.isExpect }.single().getter!!
-                )
-
-            override val getContinuation = symbolTable.referenceSimpleFunction(getJsInternalFunction("getContinuation"))
-        }
+        override val symbols = JsSymbols(this@JsIrBackendContext)
 
         override fun shouldGenerateHandlerParameterForDefaultBodyFun() = true
     }
@@ -312,5 +283,40 @@ class JsIrBackendContext(
     override fun report(element: IrElement?, irFile: IrFile?, message: String, isError: Boolean) {
         /*TODO*/
         print(message)
+    }
+
+    class JsSymbols(context: JsIrBackendContext) : Symbols<JsIrBackendContext>(context, context.symbolTable.lazyWrapper) {
+        override val ThrowNullPointerException =
+            context.symbolTable.referenceSimpleFunction(context.getFunctions(kotlinPackageFqn.child(Name.identifier("THROW_NPE"))).single())
+
+        override val ThrowNoWhenBranchMatchedException =
+            context.symbolTable.referenceSimpleFunction(context.getFunctions(kotlinPackageFqn.child(Name.identifier("noWhenBranchMatchedException"))).single())
+
+        override val ThrowTypeCastException =
+            context.symbolTable.referenceSimpleFunction(context.getFunctions(kotlinPackageFqn.child(Name.identifier("THROW_CCE"))).single())
+
+        override val ThrowUninitializedPropertyAccessException =
+            context.symbolTable.referenceSimpleFunction(context.getFunctions(FqName("kotlin.throwUninitializedPropertyAccessException")).single())
+
+        override val defaultConstructorMarker =
+            context.symbolTable.referenceClass(context.getJsInternalClass("DefaultConstructorMarker"))
+
+        override val stringBuilder
+            get() = TODO("not implemented")
+        override val copyRangeTo: Map<ClassDescriptor, IrSimpleFunctionSymbol>
+            get() = TODO("not implemented")
+        override val coroutineImpl =
+            context.symbolTable.referenceClass(context.findClass(context.coroutinePackage.memberScope, COROUTINE_IMPL_NAME))
+        val workerClass =
+            context.symbolTable.referenceClass(context.findClass(context.workerPackage.memberScope, Name.identifier("WebWorker")))
+        override val coroutineSuspendedGetter =
+            context.symbolTable.referenceSimpleFunction(
+                context.coroutineIntrinsicsPackage.memberScope.getContributedVariables(
+                    COROUTINE_SUSPENDED_NAME,
+                    NoLookupLocation.FROM_BACKEND
+                ).filterNot { it.isExpect }.single().getter!!
+            )
+        val postMessage = context.symbolTable.referenceSimpleFunction(context.getFunctions(FqName("kotlin.worker.postMessage")).single())
+        override val getContinuation = context.symbolTable.referenceSimpleFunction(context.getJsInternalFunction("getContinuation"))
     }
 }

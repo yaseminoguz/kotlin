@@ -35,6 +35,8 @@ class ScriptEngineNashorn : ScriptEngine {
 
     override fun release() {}
     override fun <T> releaseObject(t: T) {}
+    override fun prepareWorker(testPackage: Any) {}
+    override fun waitForWorkersIfNeeded() {}
 
 
     private fun getGlobalState(): MutableMap<String, Any?> = eval("this")

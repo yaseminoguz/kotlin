@@ -7443,4 +7443,27 @@ public class IrBoxJsTestGenerated extends AbstractIrBoxJsTest {
             runTest("js/js.translator/testData/box/trait/traitExtendsTwoTraits.kt");
         }
     }
+
+    @TestMetadata("js/js.translator/testData/box/webworkers")
+    @TestDataPath("$PROJECT_ROOT")
+    @RunWith(JUnit3RunnerWithInners.class)
+    public static class Webworkers extends AbstractIrBoxJsTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest0(this::doTest, TargetBackend.JS_IR, testDataFilePath);
+        }
+
+        public void testAllFilesPresentInWebworkers() throws Exception {
+            KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("js/js.translator/testData/box/webworkers"), Pattern.compile("^([^_](.+))\\.kt$"), TargetBackend.JS_IR, true);
+        }
+
+        @TestMetadata("empty.kt")
+        public void testEmpty() throws Exception {
+            runTest("js/js.translator/testData/box/webworkers/empty.kt");
+        }
+
+        @TestMetadata("postMessage.kt")
+        public void testPostMessage() throws Exception {
+            runTest("js/js.translator/testData/box/webworkers/postMessage.kt");
+        }
+    }
 }

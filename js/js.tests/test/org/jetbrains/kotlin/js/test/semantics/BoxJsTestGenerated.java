@@ -7478,4 +7478,17 @@ public class BoxJsTestGenerated extends AbstractBoxJsTest {
             runTest("js/js.translator/testData/box/trait/traitExtendsTwoTraits.kt");
         }
     }
+
+    @TestMetadata("js/js.translator/testData/box/webworkers")
+    @TestDataPath("$PROJECT_ROOT")
+    @RunWith(JUnit3RunnerWithInners.class)
+    public static class Webworkers extends AbstractBoxJsTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest0(this::doTest, TargetBackend.JS, testDataFilePath);
+        }
+
+        public void testAllFilesPresentInWebworkers() throws Exception {
+            KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("js/js.translator/testData/box/webworkers"), Pattern.compile("^([^_](.+))\\.kt$"), TargetBackend.JS, true);
+        }
+    }
 }

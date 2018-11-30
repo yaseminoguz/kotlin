@@ -12,6 +12,8 @@ interface ScriptEngine {
     fun loadFile(path: String)
     fun release()
     fun <T> releaseObject(t: T)
+    fun prepareWorker(testPackage: Any)
+    fun waitForWorkersIfNeeded()
 
     fun saveState()
     fun restoreState()

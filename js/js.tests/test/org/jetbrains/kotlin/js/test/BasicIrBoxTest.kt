@@ -115,7 +115,8 @@ abstract class BasicIrBoxTest(
                 immediateDependencies = dependencies,
                 allDependencies = allDependencies,
                 friendDependencies = emptyList(),
-                mainArguments = mainCallParameters.run { if (shouldBeGenerated()) arguments() else null }
+                mainArguments = mainCallParameters.run { if (shouldBeGenerated()) arguments() else null },
+                directory = outputFile.parent
             )
 
             val wrappedCode = wrapWithModuleEmulationMarkers(jsCode, moduleId = config.moduleId, moduleKind = config.moduleKind)
