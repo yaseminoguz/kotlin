@@ -1,3 +1,5 @@
+// !LANGUAGE: +NewInference
+
 /*
  * KOTLIN CODEGEN BOX NOT LINKED SPEC TEST (NEGATIVE)
  *
@@ -8,13 +10,12 @@
  * ISSUES: KT-28424
  */
 
-@Target(AnnotationTarget.TYPE)
-annotation class Ann
+val x = 42
 
-fun foo(x: String): @Ann(unresolved_reference) String {
-    return x
-}
+fun box(): String {
+    val test = x.run {
+        if (x == 42) x else return@run
+    }
 
-fun box(): String? {
-    return "OK"
+    System.out.println(test)
 }

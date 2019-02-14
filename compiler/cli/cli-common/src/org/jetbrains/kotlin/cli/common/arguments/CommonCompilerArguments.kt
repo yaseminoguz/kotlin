@@ -123,7 +123,7 @@ abstract class CommonCompilerArguments : CommonToolArguments() {
     var coroutinesState: String? by NullableStringFreezableVar(DEFAULT)
 
     @Argument(
-        value = "-Xnew-inference",
+        value = "`",
         description = "Enable new experimental generic type inference algorithm"
     )
     var newInference: Boolean by FreezableVar(false)
