@@ -14,12 +14,11 @@ import org.jetbrains.kotlin.ir.expressions.IrLoop
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
+import org.jetbrains.kotlin.ir.util.isEnumClass
 import org.jetbrains.kotlin.ir.util.isInlined
+import org.jetbrains.kotlin.ir.util.name
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
-import org.jetbrains.kotlin.ir.visitors.acceptVoid
-import org.jetbrains.kotlin.js.backend.ast.JsName
-import org.jetbrains.kotlin.js.backend.ast.JsScope
 import org.jetbrains.kotlin.js.naming.isES5IdentifierPart
 import org.jetbrains.kotlin.js.naming.isES5IdentifierStart
 import org.jetbrains.kotlin.name.FqName
@@ -97,21 +96,119 @@ class NameTables(packages: List<IrPackageFragment>) {
 
         for (p in packages) {
             for (declaration in p.declarations) {
-                if (declaration.isEffectivelyExternal())
-                    continue
+                if (declaration is IrClass)
+                    if (declaration.isEffectivelyExternal())
+                    declaration.acceptChildrenVoid(object : IrElementVisitorVoid {
+                        override fun visitElement(element: IrElement) {
+                            element.acceptChildrenVoid(this)
+                        }
 
-                val localNameGenerator = LocalNameGenerator(declaration)
+                        override fun visitSimpleFunction(declaration: IrSimpleFunction) {
+                            val parent = declaration.parent
+                            if (parent is IrClass && !parent.isEnumClass) {
+                                generateNameForMemberFunction(declaration)
+                            }
+                        }
+
+                        override fun visitField(declaration: IrField) {
+                            val parent = declaration.parent
+                            if (parent is IrClass && !parent.isEnumClass) {
+                                generateNameForMemberField(declaration)
+                            }
+                        }
+                    })
 
                 if (declaration is IrClass) {
-                    declaration.thisReceiver!!.acceptVoid(localNameGenerator)
                     for (memberDecl in declaration.declarations) {
-                        memberDecl.acceptChildrenVoid(LocalNameGenerator(memberDecl))
+                        generateNamesForLocalDeclarations(declaration)
+                        when (memberDecl) {
+                            is IrSimpleFunction ->
+                                generateNameForMemberFunction(memberDecl)
+                            is IrField ->
+                                generateNameForMemberField(memberDecl)
+                        }
                     }
                 } else {
-                    declaration.acceptChildrenVoid(localNameGenerator)
+                    generateNamesForLocalDeclarations(declaration)
                 }
             }
         }
+    }
+
+    private fun generateNameForMemberField(field: IrField) {
+        require(!field.isTopLevel)
+        require(!field.isStatic)
+
+        if (field.isEffectivelyExternal()) {
+            memberNames.declareStableName(field, field.name.identifier)
+            return
+        }
+
+        val parentName = (field.parent as IrDeclarationWithName).name.asString()
+        val name = "${field.name.asString()}_$parentName"
+
+        memberNames.declareFreshName(field, sanitizeName(name))
+    }
+
+    private fun generateNameForMemberFunction(declaration: IrSimpleFunction) {
+        require(!declaration.isStaticMethodOfClass) {
+            "zzz"
+        }
+        require(declaration.dispatchReceiverParameter != null) {
+            "dr"
+        }
+
+        val declareName = { name: String ->
+            memberNames.declareStableName(declaration, name)
+        }
+
+        val declarationName = declaration.getJsNameOrKotlinName().asString()
+
+        if (declaration.origin == JsLoweredDeclarationOrigin.BRIDGE_TO_EXTERNAL_FUNCTION) {
+            declareName(declarationName)
+            return
+        }
+
+        if (declaration.isEffectivelyExternal()) {
+            declareName(declarationName)
+            return
+        }
+        declaration.getJsName()?.let { jsName ->
+            declareName(jsName)
+            return
+        }
+
+        val nameBuilder = StringBuilder()
+
+        // Handle names for special functions
+        if (declaration.isEqualsInheritedFromAny()) {
+            declareName("equals")
+            return
+        }
+
+        nameBuilder.append(declarationName)
+
+        // TODO should we skip type parameters and use upper bound of type parameter when print type of value parameters?
+        declaration.typeParameters.ifNotEmpty {
+            nameBuilder.append("_\$t")
+            joinTo(nameBuilder, "") { "_${it.name.asString()}" }
+        }
+        declaration.extensionReceiverParameter?.let {
+            nameBuilder.append("_r$${it.type.asString()}")
+        }
+        declaration.valueParameters.ifNotEmpty {
+            joinTo(nameBuilder, "") { "_${it.type.asString()}" }
+        }
+        declaration.returnType.let {
+            // Return type is only used in signature for inline class types because
+            // they are binary incompatible with supertypes.
+            if (it.isInlined()) {
+                nameBuilder.append("_ret$${it.asString()}")
+            }
+        }
+
+        // TODO: Check reserved names
+        declareName(sanitizeName(nameBuilder.toString()))
     }
 
     @Suppress("unused")
@@ -148,6 +245,21 @@ class NameTables(packages: List<IrPackageFragment>) {
         error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
     }
 
+    fun getNameForMemberField(field: IrField): String {
+        val name = memberNames.names[field]
+        require(name != null) {
+            "Can't find name for member field $field"
+        }
+        return name
+    }
+
+    fun getNameForMemberFunction(function: IrSimpleFunction): String {
+        val name = memberNames.names[function]
+        require(name != null) {
+            "Can't find name for member function $function"
+        }
+        return name
+    }
 
     private fun generateNamesForTopLevelDecl(declaration: IrDeclaration) {
         when {
@@ -201,90 +313,12 @@ class NameTables(packages: List<IrPackageFragment>) {
         }
     }
 
+
     fun getNameForLoop(loop: IrLoop): String? =
         if (loop.label == null)
             null
         else
             loopNames[loop]!!
-}
-
-// TODO: implement without JsScope
-class LegacyMemberNameGenerator(val scope: JsScope) {
-
-    private val fieldCache = mutableMapOf<IrField, JsName>()
-    private val functionCache = mutableMapOf<IrFunction, JsName>()
-
-    fun getNameForMemberField(field: IrField): JsName {
-        return fieldCache.getOrPut(field) { getNewNameForField(field) }
-    }
-
-    fun getNameForMemberFunction(function: IrSimpleFunction): JsName {
-        return functionCache.getOrPut(function) { getNewNameForFunction(function) }
-    }
-
-    private fun getNewNameForField(f: IrField): JsName {
-        require(!f.isTopLevel)
-        require(!f.isStatic)
-
-        if (f.isEffectivelyExternal()) {
-            return scope.declareName(f.name.identifier)
-        }
-
-        val parentName = (f.parent as IrDeclarationWithName).name.asString()
-        val name = "${f.name.asString()}_$parentName"
-
-        return scope.declareFreshName(sanitizeName(name))
-    }
-
-    private fun getNewNameForFunction(declaration: IrSimpleFunction): JsName {
-        require(!declaration.isStaticMethodOfClass)
-        require(declaration.dispatchReceiverParameter != null)
-
-        val declarationName = declaration.getJsNameOrKotlinName().asString()
-
-        if (declaration.origin == JsLoweredDeclarationOrigin.BRIDGE_TO_EXTERNAL_FUNCTION) {
-            return scope.declareName(declarationName)
-        }
-
-        if (declaration.isEffectivelyExternal()) {
-            return scope.declareName(declarationName)
-        }
-        declaration.getJsName()?.let { jsName ->
-            return scope.declareName(jsName)
-        }
-
-        val nameBuilder = StringBuilder()
-
-        // Handle names for special functions
-        if (declaration.isMethodOfAny()) {
-            return scope.declareName(declarationName)
-        }
-
-        nameBuilder.append(declarationName)
-
-        // TODO should we skip type parameters and use upper bound of type parameter when print type of value parameters?
-        declaration.typeParameters.ifNotEmpty {
-            nameBuilder.append("_\$t")
-            joinTo(nameBuilder, "") { "_${it.name.asString()}" }
-        }
-        declaration.extensionReceiverParameter?.let {
-            nameBuilder.append("_r$${it.type.asString()}")
-        }
-        declaration.valueParameters.ifNotEmpty {
-            joinTo(nameBuilder, "") { "_${it.type.asString()}" }
-        }
-        declaration.returnType.let {
-            // Return type is only used in signature for inline class and Unit types because
-            // they are binary incompatible with supertypes.
-            if (it.isInlined() || it.isUnit()) {
-                nameBuilder.append("_ret$${it.asString()}")
-            }
-        }
-
-        // TODO: Check reserved names
-
-        return scope.declareName(sanitizeName(nameBuilder.toString()))
-    }
 }
 
 

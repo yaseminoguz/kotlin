@@ -119,8 +119,6 @@ class IrModuleToJsTransformer(
         return JsExpressionStatement(expression)
     }
 
-
-
     private fun generateModule(module: IrModuleFragment): JsProgram {
         val additionalPackages = with(backendContext) {
             externalPackageFragment.values + listOf(
@@ -134,7 +132,7 @@ class IrModuleToJsTransformer(
         val program = JsProgram()
 
         val nameGenerator = IrNamerImpl(
-            memberNameGenerator = LegacyMemberNameGenerator(program.rootScope),
+            // memberNameGenerator = LegacyMemberNameGenerator(program.rootScope),
             newNameTables = namer,
             rootScope = program.rootScope
         )
