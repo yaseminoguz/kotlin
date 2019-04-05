@@ -44,6 +44,7 @@ data class CallableReferenceKey(
 )
 
 // TODO: generate $metadata$ property and fill it with corresponding KFunction/KProperty interface
+// TODO: Makes private declarations accessed outside of thier scope in implicitDeclarationFile. Is it OK?
 class CallableReferenceLowering(val context: JsIrBackendContext) : FileLoweringPass {
     private val callableNameConst get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, Namer.KCALLABLE_NAME)
     private val getterConst get() = JsIrBuilder.buildString(context.irBuiltIns.stringType, Namer.KPROPERTY_GET)

@@ -7,13 +7,16 @@ package org.jetbrains.kotlin.ir.backend.js.utils
 
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrLoop
+import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.isFunctionOrKFunction
+import org.jetbrains.kotlin.ir.util.isSuspendFunction
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.js.backend.ast.JsName
 import org.jetbrains.kotlin.js.backend.ast.JsNameRef
 import org.jetbrains.kotlin.js.backend.ast.JsRootScope
 
 class IrNamerImpl(
-    private val memberNameGenerator: LegacyMemberNameGenerator,
+    // private val memberNameGenerator: LegacyMemberNameGenerator,
     private val newNameTables: NameTables,
     private val rootScope: JsRootScope // TODO: Don't use scopes
 ) : IrNamer {
@@ -31,13 +34,21 @@ class IrNamerImpl(
     }
 
     override fun getNameForMemberFunction(function: IrSimpleFunction): JsName {
+//        if (function.parentAsClass.defaultType.isFunctionOrKFunction()) {
+//            // TODO: Fixme
+//            return rootScope.declareName(sanitizeName(function.name.asString()))
+//        }
+//        if (function.parentAsClass.defaultType.isSuspendFunction()) {
+//            return rootScope.declareName(sanitizeName(function.name.asString()))
+//        }
+
         require(function.dispatchReceiverParameter != null)
-        return memberNameGenerator.getNameForMemberFunction(function)
+        return rootScope.declareName(newNameTables.getNameForMemberFunction(function))
     }
 
     override fun getNameForMemberField(field: IrField): JsName {
         require(!field.isStatic)
-        return memberNameGenerator.getNameForMemberField(field)
+        return rootScope.declareName(newNameTables.getNameForMemberField(field))
     }
 
     override fun getNameForField(field: IrField): JsName {
