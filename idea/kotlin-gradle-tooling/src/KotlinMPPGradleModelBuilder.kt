@@ -98,7 +98,7 @@ class KotlinMPPGradleModelBuilder : ModelBuilderService {
         val dependencies = buildSourceSetDependencies(gradleSourceSet, dependencyResolver, project)
         @Suppress("UNCHECKED_CAST")
         val dependsOnSourceSets = (getDependsOn(gradleSourceSet) as? Set<Named>)?.mapTo(LinkedHashSet()) { it.name } ?: emptySet<String>()
-        return KotlinSourceSetImpl(gradleSourceSet.name, languageSettings, sourceDirs, resourceDirs, dependencies, dependsOnSourceSets)
+        return KotlinSourceSetImpl(gradleSourceSet.name, languageSettings, sourceDirs, resourceDirs, dependencies, dependsOnSourceSets, KotlinTaskPropertiesImpl(null, null))
     }
 
     private fun buildLanguageSettings(gradleLanguageSettings: Any): KotlinLanguageSettings? {

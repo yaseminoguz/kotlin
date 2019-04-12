@@ -15,6 +15,7 @@ data class KotlinSourceSetImpl(
     override val resourceDirs: Set<File>,
     override val dependencies: Set<KotlinDependency>,
     override val dependsOnSourceSets: Set<String>,
+    override val kotlinTaskProperties: KotlinTaskProperties,
     val defaultPlatform: KotlinPlatform = KotlinPlatform.COMMON,
     val defaultIsTestModule: Boolean = false
 ) : KotlinSourceSet {
@@ -26,6 +27,7 @@ data class KotlinSourceSetImpl(
         HashSet(kotlinSourceSet.resourceDirs),
         kotlinSourceSet.dependencies.map { it.deepCopy(cloningCache) }.toSet(),
         HashSet(kotlinSourceSet.dependsOnSourceSets),
+        KotlinTaskPropertiesImpl(kotlinSourceSet.kotlinTaskProperties.incremental, kotlinSourceSet.kotlinTaskProperties.packagePrefix),
         kotlinSourceSet.platform,
         kotlinSourceSet.isTestModule
     )

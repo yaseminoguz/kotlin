@@ -196,6 +196,9 @@ class KotlinGradleProjectResolverExtension : AbstractProjectResolverExtension() 
         if (LOG.isDebugEnabled) {
             LOG.debug("Start populate module dependencies. Gradle module: [$gradleModule], Ide module: [$ideModule], Ide project: [$ideProject]")
         }
+        // statistics
+        val stats = resolverCtx.getExtraProject(gradleModule, KotlinGradleModel::class.java)?.kotlinTasksBySourceSet?.mapValues { x -> "${x.value.incremental}, ${x.value.packagePrefix}" }?.toList()
+        println(stats)
         val mppModel = resolverCtx.getMppModel(gradleModule)
         if (mppModel != null) {
             mppModel.targets.forEach { target ->
