@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 import org.jetbrains.kotlin.resolve.jvm.AsmTypes.OBJECT_TYPE
+import org.jetbrains.kotlin.resolve.jvm.JvmBindingContextSlices
 import org.jetbrains.org.objectweb.asm.Type
 
 enum class ValueKind {
@@ -38,6 +39,12 @@ interface CallGenerator {
             } else {
                 (callableMethod as CallableMethod).genInvokeDefaultInstruction(codegen.v)
             }
+
+            generateNullCheckOnCallSite(
+                JvmBindingContextSlices.RUNTIME_ASSERTION_INFO_ON_GENERIC_CALL,
+                resolvedCall?.resultingDescriptor,
+                codegen
+            )
         }
 
         override fun processAndPutHiddenParameters(justProcess: Boolean) {

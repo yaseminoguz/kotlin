@@ -33,6 +33,7 @@ import org.jetbrains.kotlin.resolve.inline.InlineUtil
 import org.jetbrains.kotlin.resolve.inline.InlineUtil.isInlinableParameterExpression
 import org.jetbrains.kotlin.resolve.inline.isInlineOnly
 import org.jetbrains.kotlin.resolve.jvm.AsmTypes
+import org.jetbrains.kotlin.resolve.jvm.JvmBindingContextSlices
 import org.jetbrains.kotlin.resolve.jvm.jvmSignature.JvmMethodGenericSignature
 import org.jetbrains.kotlin.resolve.jvm.jvmSignature.JvmMethodParameterKind
 import org.jetbrains.kotlin.resolve.jvm.jvmSignature.JvmMethodSignature
@@ -733,6 +734,12 @@ class PsiInlineCodegen(
         } finally {
             state.globalInlineContext.exitFromInliningOf(resolvedCall)
         }
+
+        generateNullCheckOnCallSite(
+            JvmBindingContextSlices.RUNTIME_ASSERTION_INFO_ON_GENERIC_CALL,
+            resolvedCall?.resultingDescriptor,
+            codegen
+        )
     }
 
     override fun processAndPutHiddenParameters(justProcess: Boolean) {

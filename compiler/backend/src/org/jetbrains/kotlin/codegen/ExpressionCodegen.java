@@ -4003,11 +4003,7 @@ public class ExpressionCodegen extends KtVisitor<StackValue, StackValue> impleme
 
             return StackValue.operation(base.type, base.kotlinType, v -> {
                 base.put(base.type, base.kotlinType, v);
-                v.dup();
-                Label ok = new Label();
-                v.ifnonnull(ok);
-                v.invokestatic(IntrinsicMethods.INTRINSICS_CLASS_NAME, "throwNpe", "()V", false);
-                v.mark(ok);
+                generateNullCheck(v);
                 return null;
             });
         }
