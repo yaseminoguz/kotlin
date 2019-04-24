@@ -65,12 +65,17 @@ class ScriptingHostTest : TestCase() {
     @Test
     fun testSaveToJar() {
         val greeting = "Hello from script jar!"
-        val outJar = Files.createTempFile("saveToJar", ".jar").toFile()
+        val outJar = Files.createTempFile("saveToJar", ".jar").toFile().canonicalFile
         val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptTemplate>()
         val host = BasicJvmScriptingHost(evaluator = BasicJvmScriptJarGenerator(outJar))
         host.eval("println(\"$greeting\")".toScriptSource(name = "SavedScript.kts"), compilationConfiguration, null).throwOnFailure()
         val classloader = URLClassLoader(arrayOf(outJar.toURI().toURL()), ScriptingHostTest::class.java.classLoader)
-        val scriptClass = classloader.loadClass("SavedScript")
+        val scriptClass = try {
+            classloader.loadClass("SavedScript")
+        } catch (e: ClassNotFoundException) {
+            Assert.fail("failed: ${e.message}\nurl: ${classloader.urLs.joinToString("\n")}")
+            throw e
+        }
         val output = captureOut {
             scriptClass.newInstance()
         }
@@ -80,7 +85,7 @@ class ScriptingHostTest : TestCase() {
     @Test
     fun testSaveToRunnableJar() {
         val greeting = "Hello from script jar!"
-        val outJar = Files.createTempFile("saveToRunnableJar", ".jar").toFile()
+        val outJar = Files.createTempFile("saveToRunnableJar", ".jar").toFile().canonicalFile
         val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptTemplate>()
         val compiler = JvmScriptCompiler(defaultJvmScriptingHostConfiguration)
         val scriptName = "SavedRunnableScript"
