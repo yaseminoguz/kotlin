@@ -15,6 +15,7 @@ import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.jar.JarFile
+import java.util.jar.JarInputStream
 import kotlin.reflect.KClass
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.BasicScriptingHost
@@ -73,7 +74,18 @@ class ScriptingHostTest : TestCase() {
         val scriptClass = try {
             classloader.loadClass("SavedScript")
         } catch (e: ClassNotFoundException) {
-            Assert.fail("failed: ${e.message}\nurl: ${classloader.urLs.joinToString("\n")}")
+
+            fun File.jarList() = sequence {
+                FileInputStream(this@jarList).use {
+                    val jis = JarInputStream(it)
+                    while (true) {
+                        val entry = jis.nextJarEntry
+                        if (entry == null) break else yield(entry.name)
+                    }
+                }
+            }
+
+            Assert.fail("failed: ${e.message}\nurl: ${classloader.urLs.joinToString("\n")},\nentries:\n  ${outJar.jarList().joinToString("\n  ")}")
             throw e
         }
         val output = captureOut {
