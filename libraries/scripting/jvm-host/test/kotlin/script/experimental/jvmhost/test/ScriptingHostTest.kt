@@ -10,6 +10,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Test
 import java.io.*
+import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Files
 import java.security.MessageDigest
@@ -86,7 +87,10 @@ class ScriptingHostTest : TestCase() {
             }
 
             val jar = File(classloader.urLs.first().toURI())
-            Assert.fail("failed: ${e.message}\nurl: ${classloader.urLs.joinToString("\n")}, jar: $jar,\nentries:\n  ${jar.jarList().joinToString("\n  ")}\nexception: $e")
+            val tryLoader = URLClassLoader(arrayOf(jar.toURI().toURL()))
+            val tryClass = try { tryLoader.loadClass("SavedScript") } catch (_: ClassNotFoundException) { null }
+            val tryResource: URL? = tryLoader.findResource("SavedScript.class")
+            Assert.fail("failed: ${e.message}\nurl: ${classloader.urLs.joinToString("\n")}, jar: $jar,\nentries:\n  ${jar.jarList().joinToString("\n  ")}\nexception: $e\n2nd try: $tryClass ($tryResource)")
             throw e
         }
         val output = captureOut {
