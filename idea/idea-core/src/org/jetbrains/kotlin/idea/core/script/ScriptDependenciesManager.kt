@@ -19,10 +19,13 @@ package org.jetbrains.kotlin.idea.core.script
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.projectRoots.Sdk
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.StandardFileSystems
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.io.URLUtil
 import org.jetbrains.annotations.TestOnly
+import org.jetbrains.kotlin.idea.caches.project.getAllProjectSdks
 import org.jetbrains.kotlin.idea.core.script.dependencies.SyncScriptDependenciesLoader
 import org.jetbrains.kotlin.scripting.definitions.ScriptDependenciesProvider
 import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
@@ -46,6 +49,7 @@ class ScriptDependenciesManager internal constructor(
 ) {
     fun getScriptClasspath(file: VirtualFile): List<VirtualFile> = toVfsRoots(cacheUpdater.getCurrentDependencies(file).classpath)
     fun getScriptDependencies(file: VirtualFile): ScriptDependencies = cacheUpdater.getCurrentDependencies(file)
+    fun getScriptSdk(file: VirtualFile): Sdk? = Companion.getScriptSdk(getScriptDependencies(file))
 
     fun getAllScriptsClasspathScope() = cache.allScriptsClasspathScope
     fun getAllLibrarySourcesScope() = cache.allLibrarySourcesScope
@@ -56,6 +60,20 @@ class ScriptDependenciesManager internal constructor(
         @JvmStatic
         fun getInstance(project: Project): ScriptDependenciesManager =
             ServiceManager.getService(project, ScriptDependenciesManager::class.java)
+
+        fun getScriptSdk(dependencies: ScriptDependencies): Sdk? {
+            // workaround for mismatched gradle wrapper and plugin version
+            val javaHome = try {
+                dependencies.javaHome?.canonicalPath
+            } catch (e: Throwable) {
+                null
+            }
+
+            return getAllProjectSdks().find { javaHome != null && File(it.homePath).canonicalPath == javaHome }
+        }
+
+        fun getScriptDefaultSdk(project: Project): Sdk? =
+            ProjectRootManager.getInstance(project).projectSdk ?: getAllProjectSdks().firstOrNull()
 
         fun toVfsRoots(roots: Iterable<File>): List<VirtualFile> {
             return roots.mapNotNull { it.classpathEntryToVfs() }
