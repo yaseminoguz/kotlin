@@ -51,6 +51,8 @@ class ScriptDependenciesManager internal constructor(
     fun getScriptDependencies(file: VirtualFile): ScriptDependencies = cacheUpdater.getCurrentDependencies(file)
     fun getScriptSdk(file: VirtualFile): Sdk? = Companion.getScriptSdk(getScriptDependencies(file))
 
+    fun getScriptClasspathScope(file: VirtualFile) = cache.getScriptClasspathScope(file)
+
     fun getAllScriptsClasspathScope() = cache.allScriptsClasspathScope
     fun getAllLibrarySourcesScope() = cache.allLibrarySourcesScope
     fun getAllLibrarySources() = cache.allLibrarySources
