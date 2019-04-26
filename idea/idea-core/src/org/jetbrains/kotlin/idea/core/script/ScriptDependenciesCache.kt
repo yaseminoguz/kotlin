@@ -19,6 +19,8 @@ package org.jetbrains.kotlin.idea.core.script
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.extensions.Extensions
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.OrderRootType
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElementFinder
 import com.intellij.psi.PsiManager
@@ -56,10 +58,47 @@ class ScriptDependenciesCache(private val project: Project) {
 
     fun getScriptClasspathScope(file: VirtualFile): GlobalSearchScope {
         return scriptsClasspathScopes.getOrPut(file) {
-            val dependencies = scriptDependenciesCache.get(file)
-            val roots = dependencies?.classpath ?: emptyList()
-            NonClasspathDirectoriesScope.compose(ScriptDependenciesManager.toVfsRoots(roots))
+            val dependencies = scriptDependenciesCache.get(file) ?: return@getOrPut GlobalSearchScope.EMPTY_SCOPE
+            val roots = dependencies.classpath
+
+            val sdk = ScriptDependenciesManager.getScriptSdk(dependencies)
+
+            @Suppress("FoldInitializerAndIfToElvis")
+            if (sdk == null) {
+                return@getOrPut NonClasspathDirectoriesScope.compose(ScriptDependenciesManager.toVfsRoots(roots))
+            }
+
+            return@getOrPut NonClasspathDirectoriesScope.compose(
+                sdk.rootProvider.getFiles(OrderRootType.CLASSES).toList() +
+                        ScriptDependenciesManager.toVfsRoots(roots)
+            )
         }
+    }
+
+    val allScriptsSdks by ClearableLazyValue(cacheLock) {
+        scriptDependenciesCache.getAll()
+            .mapNotNull { ScriptDependenciesManager.getInstance(project).getScriptSdk(it.key) }
+            .distinct()
+    }
+
+    val allScriptsSdkRoots by ClearableLazyValue(cacheLock) {
+        allScriptsSdks
+            .filter { it != ProjectRootManager.getInstance(project).projectSdk }
+            .flatMap { it.rootProvider.getFiles(OrderRootType.CLASSES).toList() }
+    }
+
+    val allScriptsSdkSourceRoots by ClearableLazyValue(cacheLock) {
+        allScriptsSdks
+            .filter { it != ProjectRootManager.getInstance(project).projectSdk }
+            .flatMap { it.rootProvider.getFiles(OrderRootType.SOURCES).toList() }
+    }
+
+    val allScriptsSdkRootsScope by ClearableLazyValue(cacheLock) {
+        NonClasspathDirectoriesScope.compose(allScriptsSdkRoots)
+    }
+
+    val allScriptsSdkSourceRootsScope by ClearableLazyValue(cacheLock) {
+        NonClasspathDirectoriesScope.compose(allScriptsSdkSourceRoots)
     }
 
     val allScriptsClasspath by ClearableLazyValue(cacheLock) {
@@ -80,10 +119,19 @@ class ScriptDependenciesCache(private val project: Project) {
     }
 
     private fun onChange(files: List<VirtualFile>) {
+        this::allScriptsSdks.clearValue()
+        this::allScriptsSdkRoots.clearValue()
+        this::allScriptsSdkSourceRoots.clearValue()
+        this::allScriptsSdkRootsScope.clearValue()
+        this::allScriptsSdkSourceRootsScope.clearValue()
+
         this::allScriptsClasspath.clearValue()
         this::allScriptsClasspathScope.clearValue()
+
         this::allLibrarySources.clearValue()
         this::allLibrarySourcesScope.clearValue()
+
+        scriptsClasspathScopes.clear()
 
         val kotlinScriptDependenciesClassFinder =
             Extensions.getArea(project).getExtensionPoint(PsiElementFinder.EP_NAME).extensions
@@ -108,6 +156,7 @@ class ScriptDependenciesCache(private val project: Project) {
 
     fun hasNotCachedRoots(scriptDependencies: ScriptDependencies): Boolean {
         return !allScriptsClasspath.containsAll(ScriptDependenciesManager.toVfsRoots(scriptDependencies.classpath)) ||
+                !allScriptsSdks.contains(ScriptDependenciesManager.getScriptSdk(scriptDependencies)) ||
                 !allLibrarySources.containsAll(ScriptDependenciesManager.toVfsRoots(scriptDependencies.sources))
     }
 
