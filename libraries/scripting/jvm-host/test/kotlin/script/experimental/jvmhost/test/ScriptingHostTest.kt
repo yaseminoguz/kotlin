@@ -85,7 +85,8 @@ class ScriptingHostTest : TestCase() {
                 }
             }
 
-            Assert.fail("failed: ${e.message}\nurl: ${classloader.urLs.joinToString("\n")},\nentries:\n  ${outJar.jarList().joinToString("\n  ")}")
+            val jar = File(classloader.urLs.first().toURI())
+            Assert.fail("failed: ${e.message}\nurl: ${classloader.urLs.joinToString("\n")}, jar: $jar,\nentries:\n  ${jar.jarList().joinToString("\n  ")}\nexception: $e")
             throw e
         }
         val output = captureOut {
