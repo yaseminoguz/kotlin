@@ -12,3 +12,10 @@ internal fun <T : Enum<T>> enumValuesIntrinsic(): Array<T> =
 @PublishedApi
 internal fun <T : Enum<T>> enumValueOfIntrinsic(name: String): T =
     throw IllegalStateException("Should be replaced by compiler")
+
+
+internal fun typeCheck(x: Boolean) {
+    if (!x) {
+        js("\$type_check_failed\$()")
+    }
+}
