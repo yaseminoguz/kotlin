@@ -18,14 +18,13 @@ internal fun <T> fillArrayVal(array: Array<T>, initValue: T): Array<T> {
 
 internal inline fun <T> arrayWithFun(size: Int, init: (Int) -> T) = fillArrayFun(Array<T>(size), init)
 
-internal inline fun <T> fillArrayFun(array: dynamic, init: (Int) -> T): Array<T> {
-    val result = array.unsafeCast<Array<T>>()
+internal inline fun <T> fillArrayFun(array: dynamic, init: (Int) -> T): Any {
     var i = 0
-    while (i != result.size) {
-        result[i] = init(i)
+    while (i != array.length.unsafeCast<Int>()) {
+        array[i] = init(i)
         ++i
     }
-    return result
+    return array
 }
 
 internal fun booleanArray(size: Int): BooleanArray = withType("BooleanArray", fillArrayVal(Array<Boolean>(size), false)).unsafeCast<BooleanArray>()
