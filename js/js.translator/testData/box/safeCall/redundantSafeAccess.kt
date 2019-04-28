@@ -1,5 +1,9 @@
 // EXPECTED_REACHABLE_NODES: 1287
 // KJS_WITH_FULL_RUNTIME
+
+// Illegal cast
+// DONT_TARGET_EXACT_BACKEND: JS_IR
+
 package foo
 
 class A(val x: String) {

@@ -1,4 +1,8 @@
 // EXPECTED_REACHABLE_NODES: 1217
+
+// Bad unsafe cast
+// DONT_TARGET_EXACT_BACKEND: JS_IR
+
 package foo
 
 import kotlin.reflect.*

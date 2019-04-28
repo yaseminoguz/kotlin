@@ -2,6 +2,9 @@
 // LANGUAGE_VERSION: 1.2
 // WITH_RUNTIME
 
+// Bad dynamic operations
+// DONT_TARGET_EXACT_BACKEND: JS_IR
+
 fun deinitialize(foo: dynamic) {
   foo.bar = null
 }

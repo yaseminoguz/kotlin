@@ -1515,16 +1515,6 @@ public class IrBoxJsTestGenerated extends AbstractIrBoxJsTest {
                 runTest("js/js.translator/testData/box/expression/cast/castToNullable.kt");
             }
 
-            @TestMetadata("checkThrowCCE.kt")
-            public void testCheckThrowCCE() throws Exception {
-                runTest("js/js.translator/testData/box/expression/cast/checkThrowCCE.kt");
-            }
-
-            @TestMetadata("explicitUpcast.kt")
-            public void testExplicitUpcast() throws Exception {
-                runTest("js/js.translator/testData/box/expression/cast/explicitUpcast.kt");
-            }
-
             @TestMetadata("implicitCastToLong.kt")
             public void testImplicitCastToLong() throws Exception {
                 runTest("js/js.translator/testData/box/expression/cast/implicitCastToLong.kt");
@@ -3254,11 +3244,6 @@ public class IrBoxJsTestGenerated extends AbstractIrBoxJsTest {
             runTest("js/js.translator/testData/box/inheritance/baseCall.kt");
         }
 
-        @TestMetadata("baseCallOrder.kt")
-        public void testBaseCallOrder() throws Exception {
-            runTest("js/js.translator/testData/box/inheritance/baseCallOrder.kt");
-        }
-
         @TestMetadata("baseClassDefinedAfterDerived.kt")
         public void testBaseClassDefinedAfterDerived() throws Exception {
             runTest("js/js.translator/testData/box/inheritance/baseClassDefinedAfterDerived.kt");
@@ -4626,11 +4611,6 @@ public class IrBoxJsTestGenerated extends AbstractIrBoxJsTest {
         @TestMetadata("thisInExtension.kt")
         public void testThisInExtension() throws Exception {
             runTest("js/js.translator/testData/box/inlineStdlib/thisInExtension.kt");
-        }
-
-        @TestMetadata("unsafeCast.kt")
-        public void testUnsafeCast() throws Exception {
-            runTest("js/js.translator/testData/box/inlineStdlib/unsafeCast.kt");
         }
     }
 
@@ -6509,11 +6489,6 @@ public class IrBoxJsTestGenerated extends AbstractIrBoxJsTest {
             runTest("js/js.translator/testData/box/propertyAccess/setter.kt");
         }
 
-        @TestMetadata("simpleLateInitIsInitialized.kt")
-        public void testSimpleLateInitIsInitialized() throws Exception {
-            runTest("js/js.translator/testData/box/propertyAccess/simpleLateInitIsInitialized.kt");
-        }
-
         @TestMetadata("staticAccessorsWithJsName.kt")
         public void testStaticAccessorsWithJsName() throws Exception {
             runTest("js/js.translator/testData/box/propertyAccess/staticAccessorsWithJsName.kt");
@@ -7044,11 +7019,6 @@ public class IrBoxJsTestGenerated extends AbstractIrBoxJsTest {
 
         public void testAllFilesPresentInSafeCall() throws Exception {
             KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("js/js.translator/testData/box/safeCall"), Pattern.compile("^([^_](.+))\\.kt$"), TargetBackend.JS_IR, true);
-        }
-
-        @TestMetadata("redundantSafeAccess.kt")
-        public void testRedundantSafeAccess() throws Exception {
-            runTest("js/js.translator/testData/box/safeCall/redundantSafeAccess.kt");
         }
 
         @TestMetadata("safeAccess.kt")

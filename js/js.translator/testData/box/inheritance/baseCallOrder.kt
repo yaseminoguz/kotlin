@@ -1,4 +1,8 @@
 // EXPECTED_REACHABLE_NODES: 1290
+
+// Access of uninitialized property 'a'
+// DONT_TARGET_EXACT_BACKEND: JS_IR
+
 package foo
 
 var x = false
