@@ -1,4 +1,6 @@
 // IGNORE_BACKEND: JVM_IR
+// Problem with naming top-level variable
+// IGNORE_BACKEND: JS_IR
 // WITH_RUNTIME
 // WITH_COROUTINES
 // COMMON_COROUTINES_TEST

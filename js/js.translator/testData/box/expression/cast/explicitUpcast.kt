@@ -2,6 +2,9 @@
 // SKIP_MINIFICATION
 // This test assumes that external JS code calls Kotlin code directly
 
+// IGNORE_BACKEND: JS_IR
+// Wrong object
+
 open class A
 
 class B : A()

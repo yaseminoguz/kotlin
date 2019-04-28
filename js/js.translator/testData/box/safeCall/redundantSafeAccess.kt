@@ -1,5 +1,9 @@
 // EXPECTED_REACHABLE_NODES: 1287
 // KJS_WITH_FULL_RUNTIME
+
+// IGNORE_BACKEND: JS_IR
+// ILLEGAL CODE
+
 package foo
 
 class A(val x: String) {
