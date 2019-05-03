@@ -480,7 +480,7 @@ class FloatMathTest {
         assertTrue(sqrt(Float.NaN).isNaN())
 
         assertTrue(exp(Float.NaN).isNaN())
-        assertAlmostEquals(E, exp(1.0F))
+        assertAlmostEquals(E, exp(1.0F), 0.0000002)
         assertEquals(1.0F, exp(0.0F))
         assertEquals(0.0F, exp(Float.NEGATIVE_INFINITY))
         assertEquals(Float.POSITIVE_INFINITY, exp(Float.POSITIVE_INFINITY))
