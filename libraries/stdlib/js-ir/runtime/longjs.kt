@@ -24,51 +24,6 @@ internal fun Long.getLowBitsUnsigned() = if (low >= 0) low.toDouble() else TWO_P
 
 internal fun hashCode(l: Long) = l.low xor l.high
 
-internal fun Long.toString(radix: Int): String {
-    if (radix < 2 || 36 < radix) {
-        throw Exception("radix out of range: $radix")
-    }
-
-    if (isZero()) {
-        return "0"
-    }
-
-    if (isNegative()) {
-        if (equalsLong(MIN_VALUE)) {
-            // We need to change the Long value before it can be negated, so we remove
-            // the bottom-most digit in this base and then recurse to do the rest.
-            val radixLong = fromInt(radix)
-            val div = div(radixLong)
-            val rem = div.multiply(radixLong).subtract(this).toInt();
-            return js("div.toString(radix) + rem.toString(radix)")
-        } else {
-            return "-${negate().toString()}"
-        }
-    }
-
-    // Do several (6) digits each time through the loop, so as to
-    // minimize the calls to the very expensive emulated div.
-    val radixToPower = fromNumber(JsMath.pow(radix.toDouble(), 6.0))
-
-    var rem = this
-    var result = ""
-    while (true) {
-        val remDiv = rem.div(radixToPower)
-        val intval = rem.subtract(remDiv.multiply(radixToPower)).toInt()
-        var digits = intval.asDynamic().toString(radix).unsafeCast<String>()
-
-        rem = remDiv
-        if (rem.isZero()) {
-            return digits + result
-        } else {
-            while (digits.length < 6) {
-                digits = "0" + digits
-            }
-            result = digits + result
-        }
-    }
-}
-
 internal fun Long.negate() = unaryMinus()
 
 internal fun Long.isZero() = high == 0 && low == 0
