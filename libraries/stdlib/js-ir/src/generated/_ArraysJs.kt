@@ -1261,7 +1261,7 @@ public actual inline fun <T> Array<out T>.plusElement(element: T): Array<T> {
  * Sorts the array in-place.
  */
 public actual fun IntArray.sort(): Unit {
-    this.asDynamic().sort()
+    this.asDynamic().sort(::doubleCompareTo)
 }
 
 /**
@@ -1275,35 +1275,35 @@ public actual fun LongArray.sort(): Unit {
  * Sorts the array in-place.
  */
 public actual fun ByteArray.sort(): Unit {
-    this.asDynamic().sort()
+    this.asDynamic().sort(::doubleCompareTo)
 }
 
 /**
  * Sorts the array in-place.
  */
 public actual fun ShortArray.sort(): Unit {
-    this.asDynamic().sort()
+    this.asDynamic().sort(::doubleCompareTo)
 }
 
 /**
  * Sorts the array in-place.
  */
 public actual fun DoubleArray.sort(): Unit {
-    this.asDynamic().sort()
+    this.asDynamic().sort(::doubleCompareTo)
 }
 
 /**
  * Sorts the array in-place.
  */
 public actual fun FloatArray.sort(): Unit {
-    this.asDynamic().sort()
+    this.asDynamic().sort(::doubleCompareTo)
 }
 
 /**
  * Sorts the array in-place.
  */
 public actual fun CharArray.sort(): Unit {
-    this.asDynamic().sort()
+    this.asDynamic().sort(::doubleCompareTo)
 }
 
 /**
