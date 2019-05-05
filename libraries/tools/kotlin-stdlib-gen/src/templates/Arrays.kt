@@ -1038,7 +1038,7 @@ object ArrayOps : TemplateGroupBase() {
                             body { "definedExternally" }
                         }
                         on(Backend.IR) {
-                            body { "this.asDynamic().sort()" }
+                            body { "this.asDynamic().sort(::doubleCompareTo)" }
                         }
                     } else {
                         body {
