@@ -60,6 +60,6 @@ internal object BitUtils {
         }
 
         bufFloat64[0] = obj
-        return bufInt32[1] * 31 + bufInt32[0]
+        return bufInt32[highIndex] * 31 + bufInt32[lowIndex]
     }
 }
