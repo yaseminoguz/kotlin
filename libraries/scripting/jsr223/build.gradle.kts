@@ -17,7 +17,7 @@ dependencies {
     compileOnly(project(":compiler:cli"))
     compileOnly(project(":kotlin-reflect-api"))
     compileOnly(intellijCoreDep())
-    runtime(projectRuntimeJar(":kotlin-compiler"))
+    runtime(project(":kotlin-compiler"))
     runtime(project(":kotlin-reflect"))
     testCompile(commonDep("junit"))
 }

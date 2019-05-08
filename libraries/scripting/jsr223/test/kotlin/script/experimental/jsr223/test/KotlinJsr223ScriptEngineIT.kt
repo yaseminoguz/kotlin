@@ -180,6 +180,25 @@ obj
     }
 
     @Test
+    fun testEvalWithContextDirect() {
+        val engine = ScriptEngineManager().getEngineByExtension("kts")!!
+
+        engine.put("z", 33)
+
+        engine.eval("val x = 10 + z")
+
+        val result = engine.eval("x + 20")
+        Assert.assertEquals(63, result)
+
+        // in the current implementation the history is shared between contexts, so "x" could also be used in this line,
+        // but this behaviour probably will not be preserved in the future, since contexts may become completely isolated
+        val result2 = engine.eval("11 + boundValue", engine.createBindings().apply {
+            put("boundValue", 100)
+        })
+        Assert.assertEquals(111, result2)
+    }
+
+    @Test
     fun testSimpleEvalInEval() {
         val engine = ScriptEngineManager().getEngineByExtension("kts")!!
         val res1 = engine.eval("val x = 3")

@@ -11,7 +11,9 @@ import javax.script.ScriptContext
 import javax.script.ScriptEngineFactory
 import kotlin.reflect.KClass
 import kotlin.script.experimental.api.ScriptEvaluationConfiguration
+import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.jvm.baseClassLoader
+import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
@@ -26,13 +28,19 @@ class KotlinJsr223ScriptEngine(
     val scriptArgsTypes: Array<out KClass<out Any>>?
 ) : KotlinJsr223JvmScriptEngineBase(factory), KotlinJsr223InvocableScriptEngine {
 
-    val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<KotlinJsr223DefaultScript> {
+    val hostConfiguration = ScriptingHostConfiguration(defaultJvmScriptingHostConfiguration) {
+        jsr223 {
+            getScriptContext { getContext() }
+        }
+    }
+
+    val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<KotlinJsr223DefaultScript>(hostConfiguration) {
         jvm {
             dependenciesFromCurrentContext(wholeClasspath = true)
         }
     }
 
-    val evaluationConfiguration = createJvmEvaluationConfigurationFromTemplate<KotlinJsr223DefaultScript>()
+    val evaluationConfiguration = createJvmEvaluationConfigurationFromTemplate<KotlinJsr223DefaultScript>(hostConfiguration)
 
     override val replCompiler: ReplCompiler by lazy {
         JvmReplCompiler(compilationConfiguration)
