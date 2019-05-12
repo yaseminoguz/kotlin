@@ -12,6 +12,7 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionContributor
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionsManager
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -24,7 +25,7 @@ abstract class AsyncScriptDefinitionsContributor(protected val project: Project)
     override fun getDefinitions(): List<KotlinScriptDefinition> {
         definitionsLock.read {
             if (definitions != null) {
-                return definitions!!
+                return definitions!!.map { it.legacyDefinition }
             }
         }
 
@@ -50,9 +51,9 @@ abstract class AsyncScriptDefinitionsContributor(protected val project: Project)
         }
     }
 
-    protected abstract fun loadScriptDefinitions(previous: List<KotlinScriptDefinition>?): List<KotlinScriptDefinition>
+    protected abstract fun loadScriptDefinitions(previous: List<ScriptDefinition>?): List<ScriptDefinition>
 
-    private var definitions: List<KotlinScriptDefinition>? = null
+    private var definitions: List<ScriptDefinition>? = null
     private val definitionsLock = ReentrantReadWriteLock()
 
     protected var forceStartUpdate = false

@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.lexer.KotlinLexer
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinitionAdapterFromNewAPIBase
+import org.jetbrains.kotlin.scripting.definitions.getEnvironment
 import org.jetbrains.kotlin.scripting.resolve.KotlinScriptDefinitionFromAnnotatedTemplate
 import org.jetbrains.plugins.gradle.config.GradleSettingsListenerAdapter
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper
@@ -171,7 +172,7 @@ class GradleScriptDefinitionsContributor(private val project: Project) : ScriptD
         templateClass: String, dependencySelector: Regex,
         additionalResolverClasspath: (gradleLibDir: File) -> List<File>
     ): List<KotlinScriptDefinition> {
-        fun createEnvironment(gradleExeSettings: GradleExecutionSettings): Environment {
+        fun createHostConfiguration(gradleExeSettings: GradleExecutionSettings): ScriptingHostConfiguration {
             val gradleJvmOptions = gradleExeSettings.daemonVmOptions?.let { vmOptions ->
                 CommandLineTokenizer(vmOptions).toList()
                     .mapNotNull { it?.let { it as? String } }
@@ -180,7 +181,7 @@ class GradleScriptDefinitionsContributor(private val project: Project) : ScriptD
             } ?: emptyList()
 
 
-            return mapOf(
+            val environment = mapOf(
                 "gradleHome" to gradleExeSettings.gradleHome?.let(::File),
                 "projectRoot" to (project.basePath ?: project.baseDir.canonicalPath)?.let(::File),
                 "gradleWithConnection" to { action: (ProjectConnection) -> Unit ->
@@ -190,7 +191,9 @@ class GradleScriptDefinitionsContributor(private val project: Project) : ScriptD
                 "gradleJvmOptions" to gradleJvmOptions,
                 "getScriptSectionTokens" to ::topLevelSectionCodeTextTokens
             )
-
+            return ScriptingHostConfiguration(defaultJvmScriptingHostConfiguration) {
+                getEnvironment { environment }
+            }
         }
 
         val gradleSettings = ExternalSystemApiUtil.getSettings(project, GradleConstants.SYSTEM_ID)
@@ -218,14 +221,15 @@ class GradleScriptDefinitionsContributor(private val project: Project) : ScriptD
         return loadDefinitionsFromTemplates(
             listOf(templateClass),
             templateClasspath,
-            createEnvironment(gradleExeSettings),
+            createHostConfiguration(gradleExeSettings),
             additionalResolverClasspath(gradleLibDir)
         ).map {
+            val definition = it.legacyDefinition
             // Expand scope for old gradle script definition
-            if (it is KotlinScriptDefinitionFromAnnotatedTemplate && !it.scriptExpectedLocations.contains(ScriptExpectedLocation.Project))
-                GradleKotlinScriptDefinitionFromAnnotatedTemplate(it)
+            if (definition is KotlinScriptDefinitionFromAnnotatedTemplate && !definition.scriptExpectedLocations.contains(ScriptExpectedLocation.Project))
+                GradleKotlinScriptDefinitionFromAnnotatedTemplate(definition)
             else
-                it
+                definition
         }
     }
 

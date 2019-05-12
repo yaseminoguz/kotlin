@@ -40,10 +40,9 @@ import org.jetbrains.kotlin.idea.caches.project.getScriptRelatedModuleInfo
 import org.jetbrains.kotlin.idea.core.script.settings.KotlinScriptingSettings
 import org.jetbrains.kotlin.script.ScriptTemplatesProvider
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
-import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinitionAdapterFromNewAPI
 import org.jetbrains.kotlin.scripting.definitions.LazyScriptDefinitionProvider
+import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinitionProvider
-import org.jetbrains.kotlin.scripting.resolve.KotlinScriptDefinitionFromAnnotatedTemplate
 import org.jetbrains.kotlin.utils.PathUtil
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import org.jetbrains.kotlin.utils.addToStdlib.flattenTo
@@ -53,35 +52,32 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.write
 import kotlin.script.dependencies.Environment
 import kotlin.script.dependencies.ScriptContents
-import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.dependencies.DependenciesResolver
 import kotlin.script.experimental.dependencies.ScriptDependencies
 import kotlin.script.experimental.dependencies.asSuccess
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.host.configurationDependencies
-import kotlin.script.experimental.host.createCompilationConfigurationFromTemplate
 import kotlin.script.experimental.jvm.JvmDependency
-import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 import kotlin.script.experimental.jvm.util.scriptCompilationClasspathFromContextOrStdlib
 import kotlin.script.templates.standard.ScriptTemplateWithArgs
 
 class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinitionProvider() {
-    private var definitionsByContributor = mutableMapOf<ScriptDefinitionContributor, List<KotlinScriptDefinition>>()
-    private var definitions: List<KotlinScriptDefinition>? = null
+    private var definitionsByContributor = mutableMapOf<ScriptDefinitionContributor, List<ScriptDefinition>>()
+    private var definitions: List<ScriptDefinition>? = null
 
     private val failedContributorsHashes = HashSet<Int>()
 
     private val scriptDefinitionsCacheLock = ReentrantReadWriteLock()
-    private val scriptDefinitionsCache = SLRUMap<String, KotlinScriptDefinition>(10, 10)
+    private val scriptDefinitionsCache = SLRUMap<String, ScriptDefinition>(10, 10)
 
-    override fun findScriptDefinition(fileName: String): KotlinScriptDefinition? {
+    override fun findDefinition(fileName: String): ScriptDefinition? {
         if (nonScriptFileName(fileName)) return null
         if (!isReady()) return null
 
         val cached = scriptDefinitionsCacheLock.write { scriptDefinitionsCache.get(fileName) }
         if (cached != null) return cached
 
-        val definition = super.findScriptDefinition(fileName) ?: return null
+        val definition = super.findDefinition(fileName) ?: return null
 
         scriptDefinitionsCacheLock.write {
             scriptDefinitionsCache.put(fileName, definition)
@@ -89,6 +85,8 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
 
         return definition
     }
+
+    override fun findScriptDefinition(fileName: String): KotlinScriptDefinition? = findDefinition(fileName)?.legacyDefinition
 
     fun reloadDefinitionsBy(contributor: ScriptDefinitionContributor) = lock.write {
         if (definitions == null) return // not loaded yet
@@ -102,7 +100,7 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
         updateDefinitions()
     }
 
-    fun getDefinitionsBy(contributor: ScriptDefinitionContributor): List<KotlinScriptDefinition> = lock.write {
+    fun getDefinitionsBy(contributor: ScriptDefinitionContributor): List<ScriptDefinition> = lock.write {
         if (definitions == null) return emptyList() // not loaded yet
 
         if (contributor !in definitionsByContributor) error("Unknown contributor: ${contributor.id}")
@@ -110,7 +108,7 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
         return definitionsByContributor[contributor] ?: emptyList()
     }
 
-    override val currentDefinitions: Sequence<KotlinScriptDefinition>
+    override val currentDefinitions
         get() =
             (definitions ?: kotlin.run {
                 reloadScriptDefinitions()
@@ -140,7 +138,7 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
         updateDefinitions()
     }
 
-    fun getAllDefinitions(): List<KotlinScriptDefinition> {
+    fun getAllDefinitions(): List<ScriptDefinition> {
         return definitions ?: kotlin.run {
             reloadScriptDefinitions()
             definitions!!
@@ -153,10 +151,10 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
         }
     }
 
-    override fun getDefaultScriptDefinition(): KotlinScriptDefinition {
+    override fun getDefaultDefinition(): ScriptDefinition {
         val standardScriptDefinitionContributor = ScriptDefinitionContributor.find<StandardScriptDefinitionContributor>(project)
             ?: error("StandardScriptDefinitionContributor should be registered is plugin.xml")
-        return standardScriptDefinitionContributor.getDefinitions().last()
+        return ScriptDefinition.FromLegacy(getScriptingHostConfiguration(), standardScriptDefinitionContributor.getDefinitions().last())
     }
 
     private fun updateDefinitions() {
@@ -196,9 +194,9 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
         }
     }
 
-    private fun ScriptDefinitionContributor.safeGetDefinitions(): List<KotlinScriptDefinition> {
+    private fun ScriptDefinitionContributor.safeGetDefinitions(): List<ScriptDefinition> {
         if (!failedContributorsHashes.contains(this@safeGetDefinitions.hashCode())) try {
-            return getDefinitions()
+            return getDefinitions().map { ScriptDefinition.FromLegacy(getScriptingHostConfiguration(), it) }
         } catch (t: Throwable) {
             // reporting failed loading only once
             LOG.error("[kts] cannot load script definitions using $this", t)
@@ -219,7 +217,7 @@ private val LOG = Logger.getInstance("ScriptTemplatesProviders")
 fun loadDefinitionsFromTemplates(
     templateClassNames: List<String>,
     templateClasspath: List<File>,
-    environment: Environment = emptyMap(),
+    baseHostConfiguration: ScriptingHostConfiguration,
     // TODO: need to provide a way to specify this in compiler/repl .. etc
     /*
      * Allows to specify additional jars needed for DependenciesResolver (and not script template).
@@ -227,7 +225,7 @@ fun loadDefinitionsFromTemplates(
      * i.e. gradle resolver may depend on some jars that 'built.gradle.kts' files should not depend on.
      */
     additionalResolverClasspath: List<File> = emptyList()
-): List<KotlinScriptDefinition> {
+): List<ScriptDefinition> {
     val classpath = templateClasspath + additionalResolverClasspath
     LOG.info("[kts] loading script definitions $templateClassNames using cp: ${classpath.joinToString(File.pathSeparator)}")
     val baseLoader = ScriptDefinitionContributor::class.java.classLoader
@@ -240,24 +238,13 @@ fun loadDefinitionsFromTemplates(
             val template = loader.loadClass(templateClassName).kotlin
             when {
                 template.annotations.firstIsInstanceOrNull<kotlin.script.templates.ScriptTemplateDefinition>() != null -> {
-                    KotlinScriptDefinitionFromAnnotatedTemplate(
-                        template,
-                        environment,
-                        templateClasspath
-                    )
+                    ScriptDefinition.FromLegacyTemplate(baseHostConfiguration, template, templateClasspath)
                 }
                 template.annotations.firstIsInstanceOrNull<kotlin.script.experimental.annotations.KotlinScript>() != null -> {
-                    val hostConfiguration = ScriptingHostConfiguration(defaultJvmScriptingHostConfiguration) {
+                    val hostConfiguration = ScriptingHostConfiguration(baseHostConfiguration) {
                         configurationDependencies(JvmDependency(classpath))
                     }
-                    KotlinScriptDefinitionAdapterFromNewAPI(
-                        createCompilationConfigurationFromTemplate(
-                            KotlinType(
-                                template
-                            ), hostConfiguration, KotlinScriptDefinition::class
-                        ),
-                        hostConfiguration
-                    )
+                    ScriptDefinition.FromTemplate(hostConfiguration, template, KotlinScriptDefinition::class)
                 }
                 else -> {
                     LOG.warn("[kts] cannot find a valid script definition annotation on the class $template")
@@ -290,6 +277,14 @@ interface ScriptDefinitionContributor {
             Extensions.getArea(project).getExtensionPoint(ScriptDefinitionContributor.EP_NAME).extensions.filterIsInstance<T>().firstOrNull()
     }
 
+}
+
+// TODO: find better naming for the interface and the method
+interface NewScriptDefinitionContributor : ScriptDefinitionContributor {
+
+    fun getNewDefinitions(): List<ScriptDefinition>
+
+    override fun getDefinitions(): List<KotlinScriptDefinition> = getNewDefinitions().map { it.legacyDefinition }
 }
 
 class StandardScriptDefinitionContributor(project: Project) : ScriptDefinitionContributor {

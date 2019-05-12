@@ -5,28 +5,23 @@
 
 package org.jetbrains.kotlin.scripting.compiler.plugin.definitions
 
-import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.LazyScriptDefinitionProvider
+import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinitionsSource
-import org.jetbrains.kotlin.scripting.definitions.StandardScriptDefinition
 import kotlin.concurrent.write
 
 open class CliScriptDefinitionProvider : LazyScriptDefinitionProvider() {
-    private val definitionsFromSources: MutableList<Sequence<KotlinScriptDefinition>> = arrayListOf()
-    private val definitions: MutableList<KotlinScriptDefinition> = arrayListOf()
+    private val definitionsFromSources: MutableList<Sequence<ScriptDefinition>> = arrayListOf()
+    private val definitions: MutableList<ScriptDefinition> = arrayListOf()
     private var hasStandardDefinition = true
 
-    override val currentDefinitions: Sequence<KotlinScriptDefinition>
+    override val currentDefinitions: Sequence<ScriptDefinition>
         get() {
             val base = definitions.asSequence() + definitionsFromSources.asSequence().flatMap { it }
-            return if (hasStandardDefinition) base + getDefaultScriptDefinition() else base
+            return if (hasStandardDefinition) base + getDefaultDefinition() else base
         }
 
-    override fun getDefaultScriptDefinition(): KotlinScriptDefinition {
-        return StandardScriptDefinition
-    }
-
-    fun setScriptDefinitions(newDefinitions: List<KotlinScriptDefinition>) {
+    fun setScriptDefinitions(newDefinitions: List<ScriptDefinition>) {
         lock.write {
             definitions.clear()
             val (withoutStdDef, stdDef) = newDefinitions.partition { it != getDefaultScriptDefinition() }

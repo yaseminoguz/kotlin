@@ -7,6 +7,9 @@ package org.jetbrains.kotlin.idea.core.script
 
 import org.jetbrains.kotlin.script.ScriptTemplatesProvider
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.getEnvironment
+import kotlin.script.experimental.host.ScriptingHostConfiguration
+import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 
 class ScriptTemplatesProviderAdapter(private val templatesProvider: ScriptTemplatesProvider) :
     ScriptDefinitionContributor {
@@ -16,7 +19,14 @@ class ScriptTemplatesProviderAdapter(private val templatesProvider: ScriptTempla
     override fun getDefinitions(): List<KotlinScriptDefinition> {
         return loadDefinitionsFromTemplates(
             templatesProvider.templateClassNames.toList(), templatesProvider.templateClasspath,
-            templatesProvider.environment.orEmpty(), templatesProvider.additionalResolverClasspath
-        )
+            ScriptingHostConfiguration(defaultJvmScriptingHostConfiguration) {
+                getEnvironment {
+                    templatesProvider.environment
+                }
+            },
+            templatesProvider.additionalResolverClasspath
+        ).map {
+            it.legacyDefinition
+        }
     }
 }

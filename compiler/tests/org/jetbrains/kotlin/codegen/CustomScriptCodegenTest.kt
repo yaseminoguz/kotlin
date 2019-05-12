@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.utils.PathUtil.KOTLIN_SCRIPTING_JVM_JAR
 import java.io.File
 import kotlin.reflect.KClass
 import kotlin.script.experimental.annotations.KotlinScript
+import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 
 
 class CustomScriptCodegenTest : CodegenTestCase() {
@@ -65,7 +66,8 @@ class CustomScriptCodegenTest : CodegenTestCase() {
 
         if (scriptDefinitions.isNotEmpty()) {
             configureScriptDefinitions(
-                scriptDefinitions.asList(), configuration, this::class.java.classLoader, MessageCollector.NONE, emptyMap()
+                scriptDefinitions.asList(), configuration, this::class.java.classLoader,
+                MessageCollector.NONE, defaultJvmScriptingHostConfiguration
             )
         }
 

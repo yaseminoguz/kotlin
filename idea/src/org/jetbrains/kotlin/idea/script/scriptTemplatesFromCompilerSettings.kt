@@ -24,7 +24,10 @@ import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionContributor
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionsManager
 import org.jetbrains.kotlin.idea.core.script.loadDefinitionsFromTemplates
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.getEnvironment
 import java.io.File
+import kotlin.script.experimental.host.ScriptingHostConfiguration
+import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 
 class ScriptTemplatesFromCompilerSettingsProvider(
     private val project: Project,
@@ -47,10 +50,16 @@ class ScriptTemplatesFromCompilerSettingsProvider(
         else loadDefinitionsFromTemplates(
             templateClassNames = kotlinSettings.scriptTemplates.split(',', ' '),
             templateClasspath = kotlinSettings.scriptTemplatesClasspath.split(File.pathSeparator).map(::File),
-            environment = mapOf(
-                "projectRoot" to (project.basePath ?: project.baseDir.canonicalPath)?.let(::File)
-            )
-        )
+            baseHostConfiguration = ScriptingHostConfiguration(defaultJvmScriptingHostConfiguration) {
+                getEnvironment {
+                    mapOf(
+                        "projectRoot" to (project.basePath ?: project.baseDir.canonicalPath)?.let(::File)
+                    )
+                }
+            }
+        ).map {
+            it.legacyDefinition
+        }
     }
 
     override val id: String = "KotlinCompilerScriptTemplatesSettings"
