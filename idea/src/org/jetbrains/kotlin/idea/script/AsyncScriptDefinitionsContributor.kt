@@ -9,23 +9,22 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
-import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionContributor
+import org.jetbrains.kotlin.idea.core.script.NewScriptDefinitionContributor
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionsManager
-import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-abstract class AsyncScriptDefinitionsContributor(protected val project: Project) : ScriptDefinitionContributor {
+abstract class AsyncScriptDefinitionsContributor(protected val project: Project) : NewScriptDefinitionContributor {
     abstract val progressMessage: String
 
-    override fun isReady(): Boolean = definitions != null
+    override fun isReady(): Boolean = _definitions != null
 
-    override fun getDefinitions(): List<KotlinScriptDefinition> {
+    override fun getNewDefinitions(): List<ScriptDefinition> {
         definitionsLock.read {
-            if (definitions != null) {
-                return definitions!!.map { it.legacyDefinition }
+            if (_definitions != null) {
+                return _definitions!!
             }
         }
 
@@ -53,7 +52,7 @@ abstract class AsyncScriptDefinitionsContributor(protected val project: Project)
 
     protected abstract fun loadScriptDefinitions(previous: List<ScriptDefinition>?): List<ScriptDefinition>
 
-    private var definitions: List<ScriptDefinition>? = null
+    private var _definitions: List<ScriptDefinition>? = null
     private val definitionsLock = ReentrantReadWriteLock()
 
     protected var forceStartUpdate = false
@@ -78,10 +77,10 @@ abstract class AsyncScriptDefinitionsContributor(protected val project: Project)
 
                 val wasRunning = definitionsLock.isWriteLocked
                 val needReload = definitionsLock.write {
-                    if (wasRunning && !forceStartUpdate && definitions != null) return@write false
-                    val newDefinitions = loadScriptDefinitions(definitions)
-                    if (newDefinitions != definitions) {
-                        definitions = newDefinitions
+                    if (wasRunning && !forceStartUpdate && _definitions != null) return@write false
+                    val newDefinitions = loadScriptDefinitions(_definitions)
+                    if (newDefinitions != _definitions) {
+                        _definitions = newDefinitions
                         return@write true
                     }
                     return@write false

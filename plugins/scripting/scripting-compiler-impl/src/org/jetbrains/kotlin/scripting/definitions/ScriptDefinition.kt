@@ -19,6 +19,7 @@ import kotlin.script.experimental.host.createEvaluationConfigurationFromTemplate
 abstract class ScriptDefinition {
 
     abstract val legacyDefinition: KotlinScriptDefinition
+    abstract val hostConfiguration: ScriptingHostConfiguration
     abstract val compilationConfiguration: ScriptCompilationConfiguration
     abstract val evaluationConfiguration: ScriptEvaluationConfiguration
 
@@ -34,7 +35,7 @@ abstract class ScriptDefinition {
         if (this is FromLegacy) legacyDefinition as? T else null
 
     open class FromLegacy(
-        hostConfiguration: ScriptingHostConfiguration,
+        override val hostConfiguration: ScriptingHostConfiguration,
         override val legacyDefinition: KotlinScriptDefinition
     ) : ScriptDefinition() {
 
@@ -79,8 +80,6 @@ abstract class ScriptDefinition {
     )
 
     abstract class FromConfigurationsBase : ScriptDefinition() {
-
-        abstract val hostConfiguration: ScriptingHostConfiguration
 
         override val legacyDefinition by lazy {
             KotlinScriptDefinitionAdapterFromNewAPI(

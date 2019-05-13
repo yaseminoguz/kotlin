@@ -6,17 +6,17 @@
 package org.jetbrains.kotlin.idea.core.script
 
 import org.jetbrains.kotlin.script.ScriptTemplatesProvider
-import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.getEnvironment
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 
 class ScriptTemplatesProviderAdapter(private val templatesProvider: ScriptTemplatesProvider) :
-    ScriptDefinitionContributor {
+    NewScriptDefinitionContributor {
     override val id: String
         get() = templatesProvider.id
 
-    override fun getDefinitions(): List<KotlinScriptDefinition> {
+    override fun getNewDefinitions(): List<ScriptDefinition> {
         return loadDefinitionsFromTemplates(
             templatesProvider.templateClassNames.toList(), templatesProvider.templateClasspath,
             ScriptingHostConfiguration(defaultJvmScriptingHostConfiguration) {
@@ -25,8 +25,6 @@ class ScriptTemplatesProviderAdapter(private val templatesProvider: ScriptTempla
                 }
             },
             templatesProvider.additionalResolverClasspath
-        ).map {
-            it.legacyDefinition
-        }
+        )
     }
 }
