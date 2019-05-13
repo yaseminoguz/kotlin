@@ -40,6 +40,9 @@ inline fun IrBuilderWithScope.irLetS(
     nameHint: String? = null,
     body: (IrValueSymbol) -> IrExpression
 ): IrExpression {
+    if (value is IrGetValue)
+        return body(value.symbol)
+
     val irTemporary = scope.createTemporaryVariable(value, nameHint)
     val irResult = body(irTemporary.symbol)
     val irBlock = IrBlockImpl(startOffset, endOffset, irResult.type, origin)
@@ -197,13 +200,13 @@ fun IrBuilderWithScope.irEqeqeq(arg1: IrExpression, arg2: IrExpression) =
     context.eqeqeq(startOffset, endOffset, arg1, arg2)
 
 fun IrBuilderWithScope.irNull() =
-    IrConstImpl.constNull(startOffset, endOffset, context.irBuiltIns.nothingNType)
+    irNull(context.irBuiltIns.nothingNType)
+
+fun IrBuilderWithScope.irNull(irType: IrType) =
+    IrConstImpl.constNull(startOffset, endOffset, irType)
 
 fun IrBuilderWithScope.irEqualsNull(argument: IrExpression) =
-    primitiveOp2(
-        startOffset, endOffset, context.irBuiltIns.eqeqSymbol, context.irBuiltIns.booleanType, IrStatementOrigin.EQEQ,
-        argument, irNull()
-    )
+    irEquals(argument, irNull())
 
 fun IrBuilderWithScope.irEquals(arg1: IrExpression, arg2: IrExpression, origin: IrStatementOrigin = IrStatementOrigin.EQEQ) =
     primitiveOp2(
@@ -211,11 +214,29 @@ fun IrBuilderWithScope.irEquals(arg1: IrExpression, arg2: IrExpression, origin: 
         arg1, arg2
     )
 
-fun IrBuilderWithScope.irNotEquals(arg1: IrExpression, arg2: IrExpression) =
-    primitiveOp1(
-        startOffset, endOffset, context.irBuiltIns.booleanNotSymbol, context.irBuiltIns.booleanType, IrStatementOrigin.EXCLEQ,
-        irEquals(arg1, arg2, origin = IrStatementOrigin.EXCLEQ)
+fun IrBuilderWithScope.irNot(arg: IrExpression, origin: IrStatementOrigin) =
+    primitiveOp1(startOffset, endOffset, context.irBuiltIns.booleanNotSymbol, context.irBuiltIns.booleanType, origin, arg)
+
+fun IrBuilderWithScope.irOrOr(arg1: IrExpression, arg2: IrExpression) =
+    irIfThenElse(
+        context.irBuiltIns.booleanType,
+        arg1,
+        irTrue(),
+        arg2,
+        IrStatementOrigin.OROR
     )
+
+fun IrBuilderWithScope.irAndAnd(arg1: IrExpression, arg2: IrExpression) =
+    irIfThenElse(
+        context.irBuiltIns.booleanType,
+        arg1,
+        arg2,
+        irFalse(),
+        IrStatementOrigin.ANDAND
+    )
+
+fun IrBuilderWithScope.irNotEquals(arg1: IrExpression, arg2: IrExpression) =
+    irNot(irEquals(arg1, arg2, origin = IrStatementOrigin.EXCLEQ), IrStatementOrigin.EXCLEQ)
 
 fun IrBuilderWithScope.irGet(type: IrType, receiver: IrExpression?, getterSymbol: IrFunctionSymbol): IrCall =
     IrCallImpl(

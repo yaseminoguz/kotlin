@@ -43,5 +43,7 @@ interface JvmLoweredDeclarationOrigin : IrDeclarationOrigin {
 
 interface JvmLoweredStatementOrigin : IrStatementOrigin {
     object DEFAULT_IMPLS_DELEGATION : IrStatementOriginImpl("DEFAULT_IMPL_DELEGATION")
+    object NOT_INSTANCEOF : IrStatementOriginImpl("NOT_INSTANCEOF")
+
     object TO_ARRAY : IrDeclarationOriginImpl("TO_ARRAY")
 }

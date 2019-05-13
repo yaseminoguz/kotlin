@@ -159,6 +159,7 @@ private val jvmFilePhases =
         computeStringTrimPhase then
         jvmBuiltinOptimizationLoweringPhase then
         additionalClassAnnotationPhase then
+        typeOperatorLowering then
 
         recordNamesForKotlinTypeMapperPhase then
 
