@@ -90,7 +90,7 @@ abstract class BasicIrBoxTest(
         }
 
         if (isMainModule) {
-            val debugMode = false
+            val debugMode = true
 
             val phaseConfig = if (debugMode) {
                 val allPhasesSet = jsPhases.toPhaseMap().values.toSet()

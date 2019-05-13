@@ -82,8 +82,6 @@ fun dumpIrElement(phaseState: PhaseState, data: IrElement, context: Any?): Strin
     return title + dumpText
 }
 
-private var phaseId: Int = 0
-
 typealias Dumper<Data, Context> = (PhaseState, Data, Context) -> String?
 
 fun <Data, Context> dumpToFile(
@@ -100,8 +98,7 @@ fun <Data, Context> dumpToFile(
                 error("Can't create directory for IR dumps at $directoryPath")
 
         // Make dump files in a directory sorted by ID
-        val phaseIdFormatted = "%02d".format(phaseId)
-        phaseId++
+        val phaseIdFormatted = "%02d".format(phaseState.phaseCount)
 
         val fileName = "${phaseIdFormatted}_${phaseState.phase.name}.$fileExtension"
 

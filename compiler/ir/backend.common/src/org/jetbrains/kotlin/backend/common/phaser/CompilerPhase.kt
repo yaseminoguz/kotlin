@@ -11,11 +11,12 @@ import kotlin.system.measureTimeMillis
 class PhaserState<Data>(
     val alreadyDone: MutableSet<AnyNamedPhase> = mutableSetOf(),
     var depth: Int = 0,
+    var phaseCount: Int = 0,
     val stickyPostconditions: MutableSet<Checker<Data>> = mutableSetOf()
 )
 
 // Copy state, forgetting the sticky postconditions (which will not be applicable to the new type)
-fun <Input, Output> PhaserState<Input>.changeType() = PhaserState<Output>(alreadyDone, depth, mutableSetOf())
+fun <Input, Output> PhaserState<Input>.changeType() = PhaserState<Output>(alreadyDone, depth, phaseCount, mutableSetOf())
 
 
 fun <R, D> PhaserState<D>.downlevel(nlevels: Int = 1, block: () -> R): R {
@@ -51,21 +52,17 @@ interface NamedCompilerPhase<in Context : CommonBackendContext, Input, Output> :
     val prerequisite: Set<AnyNamedPhase> get() = emptySet()
     val preconditions: Set<Checker<Input>>
     val postconditions: Set<Checker<Output>>
-    val runBefore: Set<Action<Input, Context>>
-    val runAfter: Set<Action<Output, Context>>
+    val actionsBefore: Set<Action<Input, Context>>
+    val actionsAfter: Set<Action<Output, Context>>
 }
 
 typealias AnyNamedPhase = NamedCompilerPhase<*, *, *>
 enum class BeforeOrAfter { BEFORE, AFTER }
 
-interface PhaseDumperVerifier<in Context : CommonBackendContext, Data> {
-    fun dump(phase: AnyNamedPhase, phaseConfig: PhaseConfig, data: Data, beforeOrAfter: BeforeOrAfter)
-    fun verify(context: Context, data: Data)
-}
-
 data class PhaseState(
     val config: PhaseConfig,
     val phase: AnyNamedPhase,
+    val phaseCount: Int,
     val beforeOrAfter: BeforeOrAfter
 )
 
@@ -85,8 +82,8 @@ abstract class AbstractNamedPhaseWrapper<in Context : CommonBackendContext, Inpu
     override val preconditions: Set<Checker<Input>> = emptySet(),
     override val postconditions: Set<Checker<Output>> = emptySet(),
     override val stickyPostconditions: Set<Checker<Output>> = emptySet(),
-    override val runBefore: Set<Action<Input, Context>> = emptySet(),
-    override val runAfter: Set<Action<Output, Context>> = emptySet(),
+    override val actionsBefore: Set<Action<Input, Context>> = emptySet(),
+    override val actionsAfter: Set<Action<Output, Context>> = emptySet(),
     private val nlevels: Int = 0
 ) : NamedCompilerPhase<Context, Input, Output> {
 
@@ -104,18 +101,19 @@ abstract class AbstractNamedPhaseWrapper<in Context : CommonBackendContext, Inpu
 
         context.inVerbosePhase = this in phaseConfig.verbose
 
-        runBefore(phaseConfig, context, input)
+        runBefore(phaseConfig, phaserState, context, input)
         val output = runBody(phaseConfig, phaserState, context, input)
         runAfter(phaseConfig, phaserState, context, output)
 
         phaserState.alreadyDone.add(this)
+        phaserState.phaseCount++
 
         return output
     }
 
-    private fun runBefore(phaseConfig: PhaseConfig, context: Context, input: Input) {
-        val state = PhaseState(phaseConfig, this, BeforeOrAfter.BEFORE)
-        for (action in runBefore) action(state, input, context)
+    private fun runBefore(phaseConfig: PhaseConfig, phaserState: PhaserState<Input>, context: Context, input: Input) {
+        val state = PhaseState(phaseConfig, this, phaserState.phaseCount, BeforeOrAfter.BEFORE)
+        for (action in actionsBefore) action(state, input, context)
 
         if (phaseConfig.checkConditions) {
             for (pre in preconditions) pre(input)
@@ -133,8 +131,8 @@ abstract class AbstractNamedPhaseWrapper<in Context : CommonBackendContext, Inpu
     }
 
     private fun runAfter(phaseConfig: PhaseConfig, phaserState: PhaserState<Input>, context: Context, output: Output) {
-        val state = PhaseState(phaseConfig, this, BeforeOrAfter.AFTER)
-        for (action in runAfter) action(state, output, context)
+        val state = PhaseState(phaseConfig, this, phaserState.phaseCount, BeforeOrAfter.AFTER)
+        for (action in actionsAfter) action(state, output, context)
 
         if (phaseConfig.checkConditions) {
             for (post in postconditions) post(output)
