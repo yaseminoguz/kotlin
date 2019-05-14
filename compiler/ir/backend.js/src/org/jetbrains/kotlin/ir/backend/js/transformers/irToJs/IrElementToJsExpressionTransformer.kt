@@ -309,8 +309,8 @@ class IrElementToJsExpressionTransformer : BaseIrElementToJsNodeTransformer<JsEx
     }
 
     override fun visitWhen(expression: IrWhen, context: JsGenerationContext): JsExpression {
-        // TODO check when w/o else branch and empty when
-        return expression.toJsNode(this, context, ::JsConditional)!!
+        val implicitElse = JsPrefixOperation(JsUnaryOperator.VOID, JsIntLiteral(0))
+        return expression.toJsNode(this, context, ::JsConditional, implicitElse)!!
     }
 
     override fun visitTypeOperator(expression: IrTypeOperatorCall, data: JsGenerationContext): JsExpression {
