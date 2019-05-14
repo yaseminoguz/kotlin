@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.*
+import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.js.backend.ast.*
 import org.jetbrains.kotlin.util.OperatorNameConventions
@@ -310,11 +311,14 @@ class IrElementToJsExpressionTransformer : BaseIrElementToJsNodeTransformer<JsEx
     }
 
     override fun visitWhen(expression: IrWhen, context: JsGenerationContext): JsExpression {
+        val lastBranch = expression.branches.lastOrNull()
         val implicitElse =
-            if (expression.branches.find(::isElseBranch) == null)
+            if (lastBranch == null || !isElseBranch(lastBranch))
                 JsPrefixOperation(JsUnaryOperator.VOID, JsIntLiteral(0))
             else
                 null
+
+        assert(implicitElse == null || expression.type.isUnit()) { "Non unit when-expression must have else branch" }
 
         return expression.toJsNode(this, context, ::JsConditional, implicitElse)!!
     }
