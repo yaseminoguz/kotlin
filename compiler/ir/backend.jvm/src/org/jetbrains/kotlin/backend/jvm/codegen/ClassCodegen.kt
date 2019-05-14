@@ -47,7 +47,7 @@ open class ClassCodegen protected constructor(
 
     val state = context.state
 
-    val typeMapper = IrTypeMapper(context.state.typeMapper)
+    val typeMapper = context.typeMapper
 
     val descriptor = irClass.descriptor
 
