@@ -41,16 +41,6 @@ class BridgeDependenciesResolver(
                 )
             )
 
-            val defaultImports = scriptCompilationConfiguration[ScriptCompilationConfiguration.defaultImports]?.toList() ?: emptyList()
-
-            fun ScriptCompilationConfiguration.toDependencies(classpath: List<File>): ScriptDependencies =
-                ScriptDependencies(
-                    classpath = classpath,
-                    sources = this[ScriptCompilationConfiguration.ide.dependenciesSources].toClassPathOrEmpty(),
-                    imports = defaultImports,
-                    scripts = this[ScriptCompilationConfiguration.importScripts].toFilesOrEmpty()
-                )
-
             val script = getScriptSource(scriptContents) ?: scriptContents.toScriptSource()
 
             val refineResults = scriptCompilationConfiguration.refineWith(
@@ -90,6 +80,17 @@ class BridgeDependenciesResolver(
             )
         }
     }
+}
+
+fun ScriptCompilationConfiguration.toDependencies(classpath: List<File>): ScriptDependencies {
+    val defaultImports = this[ScriptCompilationConfiguration.defaultImports]?.toList() ?: emptyList()
+
+    return ScriptDependencies(
+        classpath = classpath,
+        sources = this[ScriptCompilationConfiguration.ide.dependenciesSources].toClassPathOrEmpty(),
+        imports = defaultImports,
+        scripts = this[ScriptCompilationConfiguration.importScripts].toFilesOrEmpty()
+    )
 }
 
 internal fun List<ScriptDiagnostic>.mapScriptReportsToDiagnostics() =

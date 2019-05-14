@@ -33,11 +33,29 @@ fun VirtualFile.findScriptDefinition(project: Project): KotlinScriptDefinition? 
     return scriptDefinitionByFileName(project, name)
 }
 
+// TODO: naming
+fun VirtualFile.findNewScriptDefinition(project: Project): ScriptDefinition? {
+    if (!isValid || isNonScript()) return null
+    // Do not use psiFile.script here because this method can be called during indexes access
+    // and accessing stubs may cause deadlock
+    // TODO: measure performance effect and if necessary consider detecting indexing here or using separate logic for non-IDE operations to speed up filtering
+    if ((PsiManager.getInstance(project).findFile(this) as? KtFile)/*?.script*/ == null) return null
+
+    return findScriptDefinitionByFileName(project, name)
+}
+
 fun scriptDefinitionByFileName(project: Project, fileName: String): KotlinScriptDefinition {
     val scriptDefinitionProvider = ScriptDefinitionProvider.getInstance(project) ?: return null
         ?: throw IllegalStateException("Unable to get script definition: ScriptDefinitionProvider is not configured.")
 
     return scriptDefinitionProvider.findScriptDefinition(fileName) ?: scriptDefinitionProvider.getDefaultScriptDefinition()
+}
+
+fun findScriptDefinitionByFileName(project: Project, fileName: String): ScriptDefinition {
+    val scriptDefinitionProvider = ScriptDefinitionProvider.getInstance(project) ?: return null
+        ?: throw IllegalStateException("Unable to get script definition: ScriptDefinitionProvider is not configured.")
+
+    return scriptDefinitionProvider.findDefinition(fileName) ?: scriptDefinitionProvider.getDefaultDefinition()
 }
 
 private fun VirtualFile.isNonScript(): Boolean =

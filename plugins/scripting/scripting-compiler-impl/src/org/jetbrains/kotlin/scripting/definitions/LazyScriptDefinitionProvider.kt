@@ -10,8 +10,6 @@ import org.jetbrains.kotlin.idea.KotlinFileType
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
-import kotlin.script.experimental.api.ScriptCompilationConfiguration
-import kotlin.script.experimental.api.ScriptEvaluationConfiguration
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 
@@ -23,7 +21,7 @@ abstract class LazyScriptDefinitionProvider : ScriptDefinitionProvider {
 
     protected open fun getScriptingHostConfiguration(): ScriptingHostConfiguration = defaultJvmScriptingHostConfiguration
 
-    protected open fun getDefaultDefinition(): ScriptDefinition =
+    override fun getDefaultDefinition(): ScriptDefinition =
         ScriptDefinition.FromLegacy(getScriptingHostConfiguration(), StandardScriptDefinition)
 
     private var _cachedDefinitions: Sequence<ScriptDefinition>? = null
@@ -46,19 +44,13 @@ abstract class LazyScriptDefinitionProvider : ScriptDefinitionProvider {
         fileName.endsWith(it, ignoreCase = true)
     }
 
-    protected open fun findDefinition(fileName: String): ScriptDefinition? =
+    override fun findDefinition(fileName: String): ScriptDefinition? =
         if (nonScriptFileName(fileName)) null
         else lock.read {
             cachedDefinitions.firstOrNull { it.isScript(fileName) }
         }
 
     override fun findScriptDefinition(fileName: String): KotlinScriptDefinition? = findDefinition(fileName)?.legacyDefinition
-
-    override fun findScriptCompilationConfiguration(fileName: String): ScriptCompilationConfiguration? =
-        findDefinition(fileName)?.compilationConfiguration
-
-    override fun findScriptEvaluationConfiguration(fileName: String): ScriptEvaluationConfiguration? =
-        findDefinition(fileName)?.evaluationConfiguration
 
     override fun isScript(fileName: String) = findDefinition(fileName) != null
 
@@ -67,8 +59,6 @@ abstract class LazyScriptDefinitionProvider : ScriptDefinitionProvider {
     }
 
     override fun getDefaultScriptDefinition(): KotlinScriptDefinition = getDefaultDefinition().legacyDefinition
-    override fun getDefaultScriptCompilationConfiguration(): ScriptCompilationConfiguration = getDefaultDefinition().compilationConfiguration
-    override fun getDefaultScriptEvaluationConfiguration(): ScriptEvaluationConfiguration = getDefaultDefinition().evaluationConfiguration
 
     companion object {
         // TODO: find a common place for storing kotlin-related extensions and reuse values from it everywhere

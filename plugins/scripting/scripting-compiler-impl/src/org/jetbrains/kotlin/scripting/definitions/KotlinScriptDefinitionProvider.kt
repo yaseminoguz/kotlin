@@ -15,11 +15,8 @@ interface ScriptDefinitionProvider {
     fun isScript(fileName: String): Boolean
     fun getDefaultScriptDefinition(): KotlinScriptDefinition
 
-    fun findScriptCompilationConfiguration(fileName: String): ScriptCompilationConfiguration?
-    fun findScriptEvaluationConfiguration(fileName: String): ScriptEvaluationConfiguration?
-
-    fun getDefaultScriptCompilationConfiguration(): ScriptCompilationConfiguration
-    fun getDefaultScriptEvaluationConfiguration(): ScriptEvaluationConfiguration
+    fun findDefinition(fileName: String): ScriptDefinition?
+    fun getDefaultDefinition(): ScriptDefinition
 
     fun getKnownFilenameExtensions(): Sequence<String>
 
