@@ -12,6 +12,8 @@ import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.host.createCompilationConfigurationFromTemplate
 import kotlin.script.experimental.host.createEvaluationConfigurationFromTemplate
+import kotlin.script.experimental.jvm.baseClassLoader
+import kotlin.script.experimental.jvm.jvm
 
 // Transitional class/implementation - migrating to the new API
 // TODO: deprecate KotlinScriptDefinition
@@ -28,6 +30,8 @@ abstract class ScriptDefinition {
     abstract val name: String
     // TODO: used in settings, find out the reason and refactor accordingly
     abstract val definitionId: String
+
+    abstract val contextClassLoader: ClassLoader
 
     open val isDefault = false
 
@@ -60,6 +64,9 @@ abstract class ScriptDefinition {
         override val name: String get() = legacyDefinition.name
 
         override val definitionId: String get() = legacyDefinition::class.qualifiedName ?: "unknown"
+
+        override val contextClassLoader: ClassLoader
+            get() = legacyDefinition.template.java.classLoader
 
         override fun equals(other: Any?): Boolean = this === other || legacyDefinition.equals((other as? FromLegacy)?.legacyDefinition)
 
@@ -95,6 +102,11 @@ abstract class ScriptDefinition {
         override val name: String get() = compilationConfiguration[ScriptCompilationConfiguration.displayName]!!
 
         override val definitionId: String get() = compilationConfiguration[ScriptCompilationConfiguration.baseClass]!!.typeName
+
+        override val contextClassLoader: ClassLoader by lazy {
+            compilationConfiguration[ScriptCompilationConfiguration.baseClass]?.fromClass?.java?.classLoader
+                ?: hostConfiguration[ScriptingHostConfiguration.jvm.baseClassLoader]!!
+        }
 
         override fun equals(other: Any?): Boolean = this === other ||
                 (other as? FromConfigurations)?.let {

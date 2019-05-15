@@ -18,8 +18,10 @@ package org.jetbrains.kotlin.idea.core.script
 
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.core.util.*
-import java.io.DataInput
-import java.io.DataOutput
+import org.jetbrains.kotlin.scripting.resolve.RefinementResults
+import org.jetbrains.kotlin.scripting.resolve.VirtualFileScriptSource
+import java.io.*
+import kotlin.script.experimental.api.ScriptCompilationConfiguration
 import kotlin.script.experimental.dependencies.ScriptDependencies
 
 var VirtualFile.scriptDependencies: ScriptDependencies? by cachedFileAttribute(
@@ -42,5 +44,28 @@ var VirtualFile.scriptDependencies: ScriptDependencies? by cachedFileAttribute(
             writeFileList(scripts)
             writeFileList(sources)
         }
+    }
+)
+
+var VirtualFile.scriptCompilationConfiguration: ScriptCompilationConfiguration? by cachedFileAttribute(
+    name = "kotlin-script-compilation-configuration",
+    version = 1,
+    read = {
+        val size = readInt()
+        val bytes = ByteArray(size)
+        read(bytes, 0, size)
+        val bis = ByteArrayInputStream(bytes)
+        ObjectInputStream(bis).use { ois ->
+            ois.readObject() as ScriptCompilationConfiguration
+        }
+    },
+    write = {
+        val os = ByteArrayOutputStream()
+        ObjectOutputStream(os).use { oos ->
+            oos.writeObject((it as? RefinementResults.FromRefinement)?.compilationConfiguration)
+        }
+        val bytes = os.toByteArray()
+        writeInt(bytes.size)
+        write(bytes)
     }
 )

@@ -10,45 +10,44 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.scripting.definitions.ScriptDependenciesProvider
-import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
-import org.jetbrains.kotlin.scripting.resolve.ScriptContentLoader
+import org.jetbrains.kotlin.scripting.definitions.findNewScriptDefinition
+import org.jetbrains.kotlin.scripting.resolve.RefinementResults
 import org.jetbrains.kotlin.scripting.resolve.ScriptReportSink
-import org.jetbrains.kotlin.scripting.resolve.adjustByDefinition
+import org.jetbrains.kotlin.scripting.resolve.VirtualFileScriptSource
+import org.jetbrains.kotlin.scripting.resolve.refineScriptCompilationConfiguration
 import java.io.File
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
-import kotlin.script.experimental.dependencies.ScriptDependencies
+import kotlin.script.experimental.api.ResultWithDiagnostics
+import kotlin.script.experimental.jvm.compat.mapToLegacyReports
 
 class CliScriptDependenciesProvider(private val project: Project) : ScriptDependenciesProvider {
     private val cacheLock = ReentrantReadWriteLock()
-    private val cache = hashMapOf<String, ScriptDependencies?>()
-    private val scriptContentLoader = ScriptContentLoader(project)
+    private val cache = hashMapOf<String, RefinementResults?>()
 
-    override fun getScriptDependencies(file: VirtualFile): ScriptDependencies? = cacheLock.read {
-        calculateExternalDependencies(file)
+    override fun getRefinementResults(file: VirtualFile): RefinementResults? = cacheLock.read {
+        calculateRefinementResults(file)
     }
 
-    private fun calculateExternalDependencies(file: VirtualFile): ScriptDependencies? {
+    private fun calculateRefinementResults(file: VirtualFile): RefinementResults? {
         val path = file.path
         val cached = cache[path]
         return if (cached != null) cached
         else {
-            val scriptDef = file.findScriptDefinition(project)
+            val scriptDef = file.findNewScriptDefinition(project)
             if (scriptDef != null) {
-                val result = scriptContentLoader.loadContentsAndResolveDependencies(scriptDef, file)
+                val result = refineScriptCompilationConfiguration(VirtualFileScriptSource(file), scriptDef, project)
 
-                ServiceManager.getService(project, ScriptReportSink::class.java)?.attachReports(file, result.reports)
+                ServiceManager.getService(project, ScriptReportSink::class.java)?.attachReports(file, result.reports.mapToLegacyReports())
 
-                val deps = result.dependencies?.adjustByDefinition(scriptDef)
-
-                if (deps != null) {
-                    log.info("[kts] new cached deps for $path: ${deps.classpath.joinToString(File.pathSeparator)}")
-                }
-                cacheLock.write {
-                    cache.put(path, deps)
-                }
-                deps
+                if (result is ResultWithDiagnostics.Success<RefinementResults>) {
+                    log.info("[kts] new cached deps for $path: ${result.value.dependenciesClassPath.joinToString(File.pathSeparator)}")
+                    cacheLock.write {
+                        cache.put(path, result.value)
+                    }
+                    result.value
+                } else null
             } else null
         }
     }

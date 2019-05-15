@@ -41,11 +41,14 @@ import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.NotNullableUserDataProperty
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
-import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.findNewScriptDefinition
 import org.jetbrains.kotlin.scripting.resolve.LegacyResolverWrapper
+import org.jetbrains.kotlin.scripting.resolve.RefinementResults
 import kotlin.script.experimental.dependencies.AsyncDependenciesResolver
 import kotlin.script.experimental.dependencies.ScriptDependencies
 
+// TODO: rename and provide alias for compatibility - this is not only about dependencies anymore
 class ScriptDependenciesUpdater(
     private val project: Project,
     private val cache: ScriptDependenciesCache
@@ -64,6 +67,7 @@ class ScriptDependenciesUpdater(
         listenForChangesInScripts()
     }
 
+    @Deprecated("Migrating to configuration refinement")
     fun getCurrentDependencies(file: VirtualFile): ScriptDependencies {
         cache[file]?.let { return it }
 
@@ -72,6 +76,16 @@ class ScriptDependenciesUpdater(
 
         return cache[file] ?: ScriptDependencies.Empty
     }
+
+    fun getCurrentRefinementResults(file: VirtualFile): RefinementResults? {
+        cache.getRefinementResults(file)?.let { return it }
+
+        updateDependencies(file)
+        makeRootsChangeIfNeeded()
+
+        return cache.getRefinementResults(file)
+    }
+
 
     fun updateDependenciesIfNeeded(files: List<VirtualFile>): Boolean {
         if (!ScriptDefinitionsManager.getInstance(project).isReady()) return false
@@ -174,10 +188,10 @@ class ScriptDependenciesUpdater(
         return cache[file] != null || file.scriptDependencies != null
     }
 
-    fun isAsyncDependencyResolver(scriptDef: KotlinScriptDefinition): Boolean {
-        val dependencyResolver = scriptDef.dependencyResolver
-        return dependencyResolver is AsyncDependenciesResolver || dependencyResolver is LegacyResolverWrapper
-    }
+    fun isAsyncDependencyResolver(scriptDef: ScriptDefinition): Boolean =
+        scriptDef.asLegacyOrNull<KotlinScriptDefinition>()?.dependencyResolver?.let {
+            it is AsyncDependenciesResolver || it is LegacyResolverWrapper
+        } ?: false
 
     companion object {
         @JvmStatic
@@ -189,7 +203,7 @@ class ScriptDependenciesUpdater(
         }
 
         fun isAsyncDependencyResolver(file: KtFile): Boolean {
-            val scriptDefinition = file.virtualFile.findScriptDefinition(file.project) ?: return false
+            val scriptDefinition = file.virtualFile.findNewScriptDefinition(file.project) ?: return false
             return getInstance(file.project).isAsyncDependencyResolver(scriptDefinition)
         }
     }

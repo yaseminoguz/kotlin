@@ -14,25 +14,31 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.LightVirtualFile
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
+import java.io.File
 import java.net.URL
 import kotlin.reflect.KClass
 import kotlin.script.experimental.api.*
+import kotlin.script.experimental.dependencies.AsyncDependenciesResolver
 import kotlin.script.experimental.dependencies.DependenciesResolver
 import kotlin.script.experimental.dependencies.ScriptDependencies
 import kotlin.script.experimental.host.FileScriptSource
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.host.getMergedScriptText
 import kotlin.script.experimental.host.getScriptingClass
-import kotlin.script.experimental.jvm.JvmDependency
+import kotlin.script.experimental.jvm.JvmGetScriptingClass
 import kotlin.script.experimental.jvm.compat.mapToDiagnostics
 import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 import kotlin.script.experimental.jvm.impl.refineWith
+import kotlin.script.experimental.jvm.impl.toClassPathOrEmpty
 import kotlin.script.experimental.jvm.impl.toDependencies
+import kotlin.script.experimental.jvm.jdkHome
+import kotlin.script.experimental.jvm.jvm
 
 internal fun VirtualFile.loadAnnotations(
     acceptedAnnotations: List<KClass<out Annotation>>,
@@ -99,45 +105,89 @@ class ScriptLightVirtualFile(name: String, private val _path: String?, text: Str
     override fun getCanonicalPath(): String? = path
 }
 
-abstract class RefinementResults(val script: KtFileScriptSource) {
+abstract class RefinementResults(val script: SourceCode) {
     abstract val compilationConfiguration: ScriptCompilationConfiguration?
     abstract val scriptDependencies: ScriptDependencies?
 
+    // optimizing most common ops for the IDE
+    // TODO: drop after complete migration
+    @Deprecated("migrating to new configuration refinement")
+    abstract val dependenciesClassPath: List<File>
+
+    @Deprecated("migrating to new configuration refinement")
+    abstract val dependenciesSources: List<File>
+
+    @Deprecated("migrating to new configuration refinement")
+    abstract val javaHome: File?
+
+    override fun equals(other: Any?): Boolean = script == (other as? RefinementResults)?.script
+
+    override fun hashCode(): Int = script.hashCode()
+
     class FromRefinement(
-        script: KtFileScriptSource,
+        script: SourceCode,
         override val compilationConfiguration: ScriptCompilationConfiguration?
     ) : RefinementResults(script) {
+
+        // TODO: check whether implemented optimization for frequent calls makes sense here
+        override val dependenciesClassPath: List<File> by lazy {
+            compilationConfiguration?.get(ScriptCompilationConfiguration.ide.dependenciesSources).toClassPathOrEmpty()
+        }
+
+        // TODO: check whether implemented optimization for frequent calls makes sense here
+        override val dependenciesSources: List<File> by lazy {
+            compilationConfiguration?.get(ScriptCompilationConfiguration.ide.dependenciesSources).toClassPathOrEmpty()
+        }
+
+        override val javaHome: File?
+            get() = compilationConfiguration?.get(ScriptCompilationConfiguration.hostConfiguration)?.get(ScriptingHostConfiguration.jvm.jdkHome)
+
         override val scriptDependencies: ScriptDependencies?
-            get() = compilationConfiguration?.let {
-                val newClasspath = it[ScriptCompilationConfiguration.dependencies]
-                    ?.flatMap { (it as JvmDependency).classpath } ?: emptyList()
-                it.toDependencies(newClasspath)
-            }
+            get() = compilationConfiguration?.toDependencies(dependenciesClassPath)
+
+        override fun equals(other: Any?): Boolean =
+            super.equals(other) && other is FromRefinement && compilationConfiguration == other.compilationConfiguration
+
+        override fun hashCode(): Int = super.hashCode() + 23 * (compilationConfiguration?.hashCode() ?: 1)
     }
 
     class FromLegacy(
-        script: KtFileScriptSource,
+        script: SourceCode,
         override val scriptDependencies: ScriptDependencies?
     ) : RefinementResults(script) {
+
+        override val dependenciesClassPath: List<File>
+            get() = scriptDependencies?.classpath.orEmpty()
+
+        override val dependenciesSources: List<File>
+            get() = scriptDependencies?.sources.orEmpty()
+
+        override val javaHome: File?
+            get() = scriptDependencies?.javaHome
+
         override val compilationConfiguration: ScriptCompilationConfiguration?
             get() = scriptDependencies?.let {
                 TODO("drop or implement")
             }
+
+        override fun equals(other: Any?): Boolean =
+            super.equals(other) && other is FromLegacy && scriptDependencies == other.scriptDependencies
+
+        override fun hashCode(): Int = super.hashCode() + 31 * (scriptDependencies?.hashCode() ?: 1)
     }
 }
 
 fun refineScriptCompilationConfiguration(
     script: SourceCode,
     definition: ScriptDefinition,
-    project: Project,
-    contextClass: KClass<*>
+    project: Project
 ): ResultWithDiagnostics<RefinementResults> {
     val ktFileSource = script.toKtFileSource(definition, project)
     val legacyDefinition = definition.asLegacyOrNull<KotlinScriptDefinition>()
     if (legacyDefinition == null) {
         val compilationConfiguration = definition.compilationConfiguration
         val collectedData =
-            getScriptCollectedData(ktFileSource.ktFile, compilationConfiguration, project, contextClass)
+            getScriptCollectedData(ktFileSource.ktFile, compilationConfiguration, project, definition.contextClassLoader)
 
         return compilationConfiguration.refineWith(
             compilationConfiguration[ScriptCompilationConfiguration.refineConfigurationOnAnnotations]?.handler, collectedData, script
@@ -151,18 +201,34 @@ fun refineScriptCompilationConfiguration(
     } else {
         val file = script.getVirtualFile(definition)
         val scriptContents =
-            makeScriptContents(file, legacyDefinition, project, contextClass.java.classLoader)
+            makeScriptContents(file, legacyDefinition, project, definition.contextClassLoader)
         val environment = (legacyDefinition as? KotlinScriptDefinitionFromAnnotatedTemplate)?.environment.orEmpty()
 
         val result: DependenciesResolver.ResolveResult = try {
-            legacyDefinition.dependencyResolver.resolve(scriptContents, environment)
+            val resolver = legacyDefinition.dependencyResolver
+            if (resolver is AsyncDependenciesResolver) {
+                // since the only known async resolver is gradle, the following logic is taken from AsyncScriptDependenciesLoader
+                // runBlocking is using there to avoid loading dependencies asynchronously
+                // because it leads to starting more than one gradle daemon in case of resolving dependencies in build.gradle.kts
+                // It is more efficient to use one hot daemon consistently than multiple daemon in parallel
+                runBlocking {
+                    resolver.resolveAsync(scriptContents, environment)
+                }
+            } else {
+                resolver.resolve(scriptContents, environment)
+            }
         } catch (e: Throwable) {
             return makeFailureResult(e.asDiagnostics())
         }
-        return if (result is DependenciesResolver.ResolveResult.Failure) makeFailureResult(
-            result.reports.mapToDiagnostics()
-        )
-        else RefinementResults.FromLegacy(ktFileSource, result.dependencies).asSuccess(result.reports.mapToDiagnostics())
+        return if (result is DependenciesResolver.ResolveResult.Failure)
+            makeFailureResult(
+                result.reports.mapToDiagnostics()
+            )
+        else
+            RefinementResults.FromLegacy(
+                ktFileSource,
+                result.dependencies?.adjustByDefinition(definition.legacyDefinition)
+            ).asSuccess(result.reports.mapToDiagnostics())
     }
 }
 
@@ -222,16 +288,18 @@ fun getScriptCollectedData(
     scriptFile: KtFile,
     compilationConfiguration: ScriptCompilationConfiguration,
     project: Project,
-    contextClass: KClass<*>
+    contextClassLoader: ClassLoader
 ): ScriptCollectedData {
     val hostConfiguration =
         compilationConfiguration[ScriptCompilationConfiguration.hostConfiguration] ?: defaultJvmScriptingHostConfiguration
-    val getScriptingClass = hostConfiguration[ScriptingHostConfiguration.getScriptingClass]!!
+    val getScriptingClass = hostConfiguration[ScriptingHostConfiguration.getScriptingClass]
+    val jvmGetScriptingClass = (getScriptingClass as? JvmGetScriptingClass)
+        ?: throw IllegalArgumentException("Expecting JvmGetScriptingClass in the hostConfiguration[getScriptingClass], got $getScriptingClass")
     val acceptedAnnotations =
         compilationConfiguration[ScriptCompilationConfiguration.refineConfigurationOnAnnotations]?.annotations?.mapNotNull {
-            getScriptingClass(it, contextClass, hostConfiguration) as? KClass<Annotation> // TODO errors
+            jvmGetScriptingClass(it, contextClassLoader, hostConfiguration) as? KClass<Annotation> // TODO errors
         }.orEmpty()
-    val annotations = scriptFile.annotationEntries.construct(contextClass::class.java.classLoader, acceptedAnnotations, project)
+    val annotations = scriptFile.annotationEntries.construct(contextClassLoader, acceptedAnnotations, project)
     return ScriptCollectedData(
         mapOf(
             ScriptCollectedData.foundAnnotations to annotations
