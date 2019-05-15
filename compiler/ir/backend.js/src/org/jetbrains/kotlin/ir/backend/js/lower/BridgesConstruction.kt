@@ -217,7 +217,7 @@ class FunctionAndSignature(val function: IrSimpleFunction) {
             function.valueParameters.map { it.type.asString() },
             // Return type used in signature for inline classes only because
             // they are binary incompatible with supertypes and require bridges.
-            function.returnType.run { if (isInlined()) asString() else null }
+            function.returnType.run { if (isInlined() || isUnit()) asString() else null }
         )
     }
 
