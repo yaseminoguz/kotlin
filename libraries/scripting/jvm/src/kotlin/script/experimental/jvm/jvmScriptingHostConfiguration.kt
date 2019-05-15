@@ -10,6 +10,7 @@ import java.net.URLClassLoader
 import kotlin.reflect.KClass
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.*
+import kotlin.script.experimental.jvm.impl.toClassPathOrEmpty
 import kotlin.script.experimental.util.PropertiesCollection
 
 interface JvmScriptingHostConfigurationKeys
@@ -23,6 +24,12 @@ open class JvmScriptingHostConfigurationBuilder : JvmScriptingHostConfigurationK
 val JvmScriptingHostConfigurationKeys.javaHome by PropertiesCollection.key<File>(File(System.getProperty("java.home")))
 
 val JvmScriptingHostConfigurationKeys.jdkHome by PropertiesCollection.key<File>()
+
+val JvmScriptingHostConfigurationKeys.baseClassLoader by PropertiesCollection.key<ClassLoader> {
+    get(ScriptingHostConfiguration.configurationDependencies)?.let {
+        URLClassLoader(it.toClassPathOrEmpty().map { f -> f.toURI().toURL() }.toTypedArray())
+    }
+}
 
 @Suppress("unused")
 val ScriptingHostConfigurationKeys.jvm
@@ -40,15 +47,17 @@ class JvmGetScriptingClass : GetScriptingClass {
     private var baseClassLoaderIsInitialized = false
     private var baseClassLoader: ClassLoader? = null
 
+    override fun invoke(classType: KotlinType, contextClass: KClass<*>, hostConfiguration: ScriptingHostConfiguration): KClass<*> =
+        invoke(classType, contextClass.java.classLoader, hostConfiguration)
+
     @Synchronized
-    override fun invoke(classType: KotlinType, contextClass: KClass<*>, hostConfiguration: ScriptingHostConfiguration): KClass<*> {
+    operator fun invoke(classType: KotlinType, contextClassLoader: ClassLoader, hostConfiguration: ScriptingHostConfiguration): KClass<*> {
 
         // checking if class already loaded in the same context
-        val contextClassloader = contextClass.java.classLoader
         val fromClass = classType.fromClass
         if (fromClass != null) {
             if (fromClass.java.classLoader == null) return fromClass // root classloader
-            val actualClassLoadersChain = generateSequence(contextClassloader) { it.parent }
+            val actualClassLoadersChain = generateSequence(contextClassLoader) { it.parent }
             if (actualClassLoadersChain.any { it == fromClass.java.classLoader }) return fromClass
         }
 
@@ -62,7 +71,7 @@ class JvmGetScriptingClass : GetScriptingClass {
         }
 
         if (!baseClassLoaderIsInitialized) {
-            baseClassLoader = contextClassloader
+            baseClassLoader = contextClassLoader
             baseClassLoaderIsInitialized = true
         }
         // TODO: this check breaks testLazyScriptDefinition, find out the reason and fix
@@ -79,8 +88,8 @@ class JvmGetScriptingClass : GetScriptingClass {
                 }
             }
             classLoader =
-                    if (classpath == null || classpath.isEmpty()) baseClassLoader
-                    else URLClassLoader(classpath.toTypedArray(), baseClassLoader)
+                if (classpath == null || classpath.isEmpty()) baseClassLoader
+                else URLClassLoader(classpath.toTypedArray(), baseClassLoader)
         }
 
         return try {
