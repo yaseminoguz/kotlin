@@ -43,7 +43,7 @@ import kotlin.script.experimental.jvm.jvm
 internal fun VirtualFile.loadAnnotations(
     acceptedAnnotations: List<KClass<out Annotation>>,
     project: Project,
-    classLoader: ClassLoader
+    classLoader: ClassLoader?
 ): List<Annotation> =
 // TODO_R: report error on failure to load annotation class
     ApplicationManager.getApplication().runReadAction<List<Annotation>> {
@@ -236,7 +236,7 @@ internal fun makeScriptContents(
     file: VirtualFile,
     legacyDefinition: KotlinScriptDefinition,
     project: Project,
-    classLoader: ClassLoader
+    classLoader: ClassLoader?
 ): ScriptContentLoader.BasicScriptContents =
     ScriptContentLoader.BasicScriptContents(
         file,
@@ -288,7 +288,7 @@ fun getScriptCollectedData(
     scriptFile: KtFile,
     compilationConfiguration: ScriptCompilationConfiguration,
     project: Project,
-    contextClassLoader: ClassLoader
+    contextClassLoader: ClassLoader?
 ): ScriptCollectedData {
     val hostConfiguration =
         compilationConfiguration[ScriptCompilationConfiguration.hostConfiguration] ?: defaultJvmScriptingHostConfiguration
@@ -308,7 +308,7 @@ fun getScriptCollectedData(
 }
 
 private fun Iterable<KtAnnotationEntry>.construct(
-    classLoader: ClassLoader, acceptedAnnotations: List<KClass<out Annotation>>, project: Project
+    classLoader: ClassLoader?, acceptedAnnotations: List<KClass<out Annotation>>, project: Project
 ): List<Annotation> =
     mapNotNull { psiAnn ->
         // TODO: consider advanced matching using semantic similar to actual resolving
@@ -318,7 +318,7 @@ private fun Iterable<KtAnnotationEntry>.construct(
             @Suppress("UNCHECKED_CAST")
             (constructAnnotation(
                 psiAnn,
-                classLoader.loadClass(it.qualifiedName).kotlin as KClass<out Annotation>,
+                (classLoader ?: ClassLoader.getSystemClassLoader()).loadClass(it.qualifiedName).kotlin as KClass<out Annotation>,
                 project
             ))
         }

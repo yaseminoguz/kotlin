@@ -31,7 +31,7 @@ abstract class ScriptDefinition {
     // TODO: used in settings, find out the reason and refactor accordingly
     abstract val definitionId: String
 
-    abstract val contextClassLoader: ClassLoader
+    abstract val contextClassLoader: ClassLoader?
 
     open val isDefault = false
 
@@ -65,7 +65,7 @@ abstract class ScriptDefinition {
 
         override val definitionId: String get() = legacyDefinition::class.qualifiedName ?: "unknown"
 
-        override val contextClassLoader: ClassLoader
+        override val contextClassLoader: ClassLoader?
             get() = legacyDefinition.template.java.classLoader
 
         override fun equals(other: Any?): Boolean = this === other || legacyDefinition.equals((other as? FromLegacy)?.legacyDefinition)
@@ -103,9 +103,9 @@ abstract class ScriptDefinition {
 
         override val definitionId: String get() = compilationConfiguration[ScriptCompilationConfiguration.baseClass]!!.typeName
 
-        override val contextClassLoader: ClassLoader by lazy {
+        override val contextClassLoader: ClassLoader? by lazy {
             compilationConfiguration[ScriptCompilationConfiguration.baseClass]?.fromClass?.java?.classLoader
-                ?: hostConfiguration[ScriptingHostConfiguration.jvm.baseClassLoader]!!
+                ?: hostConfiguration[ScriptingHostConfiguration.jvm.baseClassLoader]
         }
 
         override fun equals(other: Any?): Boolean = this === other ||

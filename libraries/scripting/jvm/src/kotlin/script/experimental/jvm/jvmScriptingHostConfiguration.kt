@@ -51,7 +51,7 @@ class JvmGetScriptingClass : GetScriptingClass {
         invoke(classType, contextClass.java.classLoader, hostConfiguration)
 
     @Synchronized
-    operator fun invoke(classType: KotlinType, contextClassLoader: ClassLoader, hostConfiguration: ScriptingHostConfiguration): KClass<*> {
+    operator fun invoke(classType: KotlinType, contextClassLoader: ClassLoader?, hostConfiguration: ScriptingHostConfiguration): KClass<*> {
 
         // checking if class already loaded in the same context
         val fromClass = classType.fromClass
@@ -93,7 +93,7 @@ class JvmGetScriptingClass : GetScriptingClass {
         }
 
         return try {
-            classLoader!!.loadClass(classType.typeName).kotlin
+            (classLoader ?: ClassLoader.getSystemClassLoader()).loadClass(classType.typeName).kotlin
         } catch (e: Throwable) {
             throw IllegalArgumentException("unable to load class $classType", e)
         }
