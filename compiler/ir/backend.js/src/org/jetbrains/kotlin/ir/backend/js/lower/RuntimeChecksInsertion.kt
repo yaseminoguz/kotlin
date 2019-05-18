@@ -124,6 +124,7 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
 //            JsIrBuilder.buildString(context.irBuiltIns.stringType, "type_check")
 
         val tmp = JsIrBuilder.buildVar(type, null, name = "tc$", initializer = expression)
+
         val condition = JsIrBuilder.buildTypeOperator(
             type = context.irBuiltIns.booleanType,
             argument = JsIrBuilder.buildGetValue(tmp.symbol),
@@ -131,11 +132,10 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
             symbol = typeSymbol,
             toType = type
         )
-        val typeCheck = JsIrBuilder.buildIfElse(
-            type = context.irBuiltIns.unitType,
-            cond = calculator.not(condition),
-            thenBranch = JsIrBuilder.buildCall(context.intrinsics.unreachable.symbol)
-        )
+
+        val typeCheck = JsIrBuilder.buildCall(context.intrinsics.typeCheckIntrinsic).apply {
+            putValueArgument(0, condition)
+        }
         val getTmp = JsIrBuilder.buildGetValue(tmp.symbol)
 
         return IrCompositeImpl(
