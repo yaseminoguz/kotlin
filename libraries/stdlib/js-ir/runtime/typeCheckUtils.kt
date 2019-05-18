@@ -83,15 +83,7 @@ internal fun isSuspendFunction(obj: dynamic, arity: Int): Boolean {
 }
 
 fun isObject(obj: dynamic): Boolean {
-    val objTypeOf = jsTypeOf(obj)
-
-    return when (objTypeOf) {
-        "string" -> true
-        "number" -> true
-        "boolean" -> true
-        "function" -> true
-        else -> jsInstanceOf(obj, js("Object"))
-    }
+    return (obj != null) && (obj != js("void 0"))
 }
 
 private fun isJsArray(obj: Any): Boolean {
