@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.lower
 
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
+import org.jetbrains.kotlin.backend.common.deepCopyWithVariables
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrArithBuilder
@@ -13,10 +14,7 @@ import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrCompositeImpl
-import org.jetbrains.kotlin.ir.types.classifierOrNull
-import org.jetbrains.kotlin.ir.types.isBoolean
-import org.jetbrains.kotlin.ir.types.isString
-import org.jetbrains.kotlin.ir.types.isUnit
+import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -24,9 +22,13 @@ import org.jetbrains.kotlin.name.FqName
 
 class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass {
     private val calculator = JsIrArithBuilder(context)
+    var count: Int = 0
 
     override fun lower(irFile: IrFile) {
         if (irFile.name.contains("typeCheckUtils.kt"))
+            return
+
+        if (irFile.name.contains("coroutineInternalJS.kt"))
             return
 
         irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
@@ -80,13 +82,10 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
 
 
     private fun insertRuntimeChecks(expression: IrExpression): IrExpression {
-
         val type = expression.type
         val typeSymbol = type.classifierOrNull ?: return expression
 
-
         val typeClass = typeSymbol.owner as? IrClass ?: return expression
-
 
         if (typeClass.name.asString().startsWith("KMutableProperty"))
             return expression
@@ -109,10 +108,14 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
 
         if (type.isUnit()) return expression
 
+        // Pointless. Check later
+        if (type.isNullableAny()) return expression
+
         // For primitive companions
         if (typeClass.isCompanion) return expression
 
-        // For IR intrinsics
+        // For IR intrinsics        return;
+
         val parentFragment = typeClass.parent as? IrPackageFragment
         if (parentFragment != null && parentFragment.fqName == FqName("kotlin.internal.ir"))
             return expression
@@ -123,28 +126,54 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
 //        val typeCheck: IrExpression =
 //            JsIrBuilder.buildString(context.irBuiltIns.stringType, "type_check")
 
-        val tmp = JsIrBuilder.buildVar(type, null, name = "tc$", initializer = expression)
+        if (expression.canHaveSideEffects()) {
+            val tmp = JsIrBuilder.buildVar(type, null, name = "tc$$count", initializer = expression)
+            count++
 
-        val condition = JsIrBuilder.buildTypeOperator(
-            type = context.irBuiltIns.booleanType,
-            argument = JsIrBuilder.buildGetValue(tmp.symbol),
-            operator = IrTypeOperator.INSTANCEOF,
-            symbol = typeSymbol,
-            toType = type
-        )
+            val condition = JsIrBuilder.buildTypeOperator(
+                type = context.irBuiltIns.booleanType,
+                argument = JsIrBuilder.buildGetValue(tmp.symbol),
+                operator = IrTypeOperator.INSTANCEOF,
+                symbol = typeSymbol,
+                toType = type
+            )
+            val typeCheck = JsIrBuilder.buildCall(context.intrinsics.typeCheckIntrinsic).apply {
+                putValueArgument(0, condition)
+            }
+            val getTmp = JsIrBuilder.buildGetValue(tmp.symbol)
 
-        val typeCheck = JsIrBuilder.buildCall(context.intrinsics.typeCheckIntrinsic).apply {
-            putValueArgument(0, condition)
+            return IrCompositeImpl(
+                expression.startOffset,
+                expression.endOffset,
+                origin = null,
+                statements = listOf(tmp, typeCheck, getTmp),
+                type = expression.type
+            )
+        } else {
+            val condition = JsIrBuilder.buildTypeOperator(
+                type = context.irBuiltIns.booleanType,
+                argument = expression.deepCopyWithVariables(),
+                operator = IrTypeOperator.INSTANCEOF,
+                symbol = typeSymbol,
+                toType = type
+            )
+            val typeCheck = JsIrBuilder.buildCall(context.intrinsics.typeCheckIntrinsic).apply {
+                putValueArgument(0, condition)
+            }
+            return IrCompositeImpl(
+                expression.startOffset,
+                expression.endOffset,
+                origin = null,
+                statements = listOf(typeCheck, expression),
+                type = expression.type
+            )
         }
-        val getTmp = JsIrBuilder.buildGetValue(tmp.symbol)
-
-        return IrCompositeImpl(
-            expression.startOffset,
-            expression.endOffset,
-            origin = null,
-            statements = listOf(tmp, typeCheck, getTmp),
-            type = expression.type
-        )
     }
 }
+
+private fun IrExpression.canHaveSideEffects(): Boolean =
+    when (this) {
+        is IrGetValue -> false
+        else -> true
+    }
 
