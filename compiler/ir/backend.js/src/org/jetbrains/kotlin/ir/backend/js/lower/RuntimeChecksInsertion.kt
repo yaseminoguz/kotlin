@@ -11,16 +11,13 @@ import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrArithBuilder
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.declarations.*
-import org.jetbrains.kotlin.ir.expressions.IrDynamicExpression
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrTypeOperator
+import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.IrCompositeImpl
 import org.jetbrains.kotlin.ir.types.classifierOrNull
+import org.jetbrains.kotlin.ir.types.isBoolean
 import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.types.isUnit
-import org.jetbrains.kotlin.ir.util.hasAnnotation
-import org.jetbrains.kotlin.ir.util.isEffectivelyExternal
-import org.jetbrains.kotlin.ir.util.patchDeclarationParents
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.FqName
@@ -49,6 +46,30 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
             }
 
             override fun visitExpression(expression: IrExpression): IrExpression {
+                if (expression is IrDynamicMemberExpression) {
+                    return expression
+                }
+
+                if (expression is IrWhen || expression is IrBranch) {
+                    return expression
+                }
+
+                if (expression is IrDynamicOperatorExpression) {
+                    if (expression.operator.isAssignmentOperator) {
+                        return expression
+                    }
+                    if (expression.operator == IrDynamicOperator.INVOKE) {
+                        return expression
+                    }
+                }
+
+                if (expression is IrCall) {
+                    // EQEQ
+                    if (expression.symbol.owner.getPackageFragment()?.fqName == FqName("kotlin.internal.ir")) {
+                        return expression
+                    }
+                }
+
                 val newExpression = super.visitExpression(expression)
                 return insertRuntimeChecks(newExpression)
             }
@@ -59,14 +80,26 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
 
 
     private fun insertRuntimeChecks(expression: IrExpression): IrExpression {
-        if (expression is IrDynamicExpression)
-            return expression
 
         val type = expression.type
         val typeSymbol = type.classifierOrNull ?: return expression
 
 
         val typeClass = typeSymbol.owner as? IrClass ?: return expression
+
+
+        if (typeClass.name.asString().startsWith("KMutableProperty"))
+            return expression
+
+        if (typeClass.name.asString().startsWith("KProperty"))
+            return expression
+
+        if (typeClass.name.asString().startsWith("SuspendFunction"))
+            return expression
+
+        // Some boolean operators return numbers (^)
+        if (type.isBoolean())
+            return expression
 
         if (typeSymbol == context.continuationClass)
             return expression
