@@ -9,8 +9,8 @@ import withType
 
 external fun <T> Array(size: Int): Array<T>
 
-internal fun <T> fillArrayVal(array: Array<T>, initValue: T): Array<T> {
-    for (i in 0..array.size - 1) {
+internal fun <T> fillArrayVal(array: dynamic, initValue: T): dynamic {
+    for (i in 0..array.length - 1) {
         array[i] = initValue
     }
     return array
