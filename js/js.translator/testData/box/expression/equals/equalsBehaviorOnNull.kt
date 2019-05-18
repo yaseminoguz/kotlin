@@ -1,4 +1,6 @@
 // EXPECTED_REACHABLE_NODES: 1289
+// IGNORE_BACKEND: JS_IR
+// Some problem with (a == null)
 
 package foo
 

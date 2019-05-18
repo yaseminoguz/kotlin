@@ -1,4 +1,8 @@
 // EXPECTED_REACHABLE_NODES: 1280
+
+// IGNORE_BACKEND: JS_IR
+// Bad unsafeCast
+
 package foo
 
 // CHECK_NOT_CALLED_IN_SCOPE: scope=box function=isType
