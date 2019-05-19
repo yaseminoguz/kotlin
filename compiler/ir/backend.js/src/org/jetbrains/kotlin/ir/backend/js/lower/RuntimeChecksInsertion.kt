@@ -9,7 +9,6 @@ import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.deepCopyWithVariables
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
-import org.jetbrains.kotlin.ir.backend.js.ir.JsIrArithBuilder
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
@@ -21,7 +20,6 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.FqName
 
 class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass {
-    private val calculator = JsIrArithBuilder(context)
     var count: Int = 0
 
     override fun lower(irFile: IrFile) {
