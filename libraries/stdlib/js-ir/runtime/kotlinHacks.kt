@@ -40,26 +40,28 @@ internal fun fillFrom(src: dynamic, dst: dynamic): dynamic {
     val srcLen: Int = src.length
     val dstLen: Int = dst.length
     var index: Int = 0
-    val arr = dst.unsafeCast<Array<Any?>>()
-    while (index < srcLen && index < dstLen) arr[index] = src[index++]
+    while (index < srcLen && index < dstLen) {
+        dst[index] = src[index]
+        index++
+    }
     return dst
 }
 
 
 internal fun arrayCopyResize(source: dynamic, newSize: Int, defaultValue: Any?): dynamic {
-    val result = source.slice(0, newSize).unsafeCast<Array<Any?>>()
+    val result = source.slice(0, newSize)
     copyArrayType(source, result)
     var index: Int = source.length
     if (newSize > index) {
-        result.asDynamic().length = newSize
+        result.length = newSize
         while (index < newSize) result[index++] = defaultValue
     }
     return result
 }
 
 internal fun <T> arrayPlusCollection(array: dynamic, collection: Collection<T>): dynamic {
-    val result = array.slice().unsafeCast<Array<T>>()
-    result.asDynamic().length = result.size + collection.size
+    val result = array.slice()
+    result.length = result.length + collection.size
     copyArrayType(array, result)
     var index: Int = array.length
     for (element in collection) result[index++] = element
