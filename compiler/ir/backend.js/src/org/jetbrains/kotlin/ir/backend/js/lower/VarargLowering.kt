@@ -205,6 +205,6 @@ private class VarargTransformer(
         return expression
     }
 
-    override fun visitCall(expression: IrCall) = transformFunctionAccessExpression(expression)
-    override fun visitConstructorCall(expression: IrConstructorCall) = transformFunctionAccessExpression(expression)
+    override fun visitFunctionAccess(expression: IrFunctionAccessExpression) =
+        transformFunctionAccessExpression(expression)
 }
