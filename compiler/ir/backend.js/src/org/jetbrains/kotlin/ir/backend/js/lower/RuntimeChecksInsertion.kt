@@ -36,6 +36,12 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
                 if (declaration.hasAnnotation(context.intrinsics.doNotIntrinsifyAnnotationSymbol))
                     return declaration
 
+                if (declaration is IrSimpleFunction && declaration.isTailrec) {
+                    // IrJsCodegenBoxTestGenerated.Coroutines.FeatureIntersection.Tailrec#testSum_1_3
+                    // IrJsCodegenBoxTestGenerated.Diagnostics.Functions.TailRecursion#testSum
+                    return declaration
+                }
+
                 val name = declaration.name.asString()
                 if (name == "arrayConcat" || name == "primitiveArrayConcat")
                     return declaration
@@ -94,6 +100,12 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
             return expression
 
         if (typeClass.name.asString().startsWith("SuspendFunction"))
+            return expression
+
+        if (typeClass.name.asString().startsWith("KSuspendFunction"))
+            return expression
+
+        if (type.isNothing())
             return expression
 
         // Some boolean operators return numbers (^)
