@@ -51,21 +51,8 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
             }
 
             override fun visitExpression(expression: IrExpression): IrExpression {
-                if (expression is IrDynamicMemberExpression) {
-                    return expression
-                }
-
                 if (expression is IrWhen || expression is IrBranch) {
                     return expression
-                }
-
-                if (expression is IrDynamicOperatorExpression) {
-                    if (expression.operator.isAssignmentOperator) {
-                        return expression
-                    }
-                    if (expression.operator == IrDynamicOperator.INVOKE) {
-                        return expression
-                    }
                 }
 
                 if (expression is IrCall) {
