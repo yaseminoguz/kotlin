@@ -2,6 +2,7 @@
 // Unit even though the outer `if` still returns `Int?`. This results
 // in a ClassCastException when that Unit is converted into a Number.
 // IGNORE_BACKEND: JVM_IR
+// IGNORE_BACKEND: JS_IR
 fun test(
         b: Boolean,
         i: Int
