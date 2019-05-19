@@ -50,7 +50,6 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
                     return declaration
                 }
 
-
                 // Some call stack problems
                 if (declaration is IrConstructor)
                     return declaration
@@ -60,8 +59,13 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
 
             override fun visitExpression(expression: IrExpression): IrExpression {
                 if (expression is IrCall) {
+                    val function: IrFunction = expression.symbol.owner
                     // EQEQ
-                    if (expression.symbol.owner.getPackageFragment()?.fqName == FqName("kotlin.internal.ir")) {
+                    if (function.getPackageFragment()?.fqName == FqName("kotlin.internal.ir")) {
+                        return expression
+                    }
+
+                    if (function.fqNameWhenAvailable == FqName("kotlin.js.js")) {
                         return expression
                     }
                 }
@@ -115,16 +119,9 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
         if (typeClass.isCompanion) return expression
 
         // For IR intrinsics        return;
-
         val parentFragment = typeClass.parent as? IrPackageFragment
         if (parentFragment != null && parentFragment.fqName == FqName("kotlin.internal.ir"))
             return expression
-
-        // For js function
-        if (type.isString()) return expression
-
-//        val typeCheck: IrExpression =
-//            JsIrBuilder.buildString(context.irBuiltIns.stringType, "type_check")
 
         if (expression.canHaveSideEffects()) {
             val tmp = JsIrBuilder.buildVar(type, null, name = "tc$$count", initializer = expression)
