@@ -42,9 +42,6 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
                     return declaration
                 }
 
-                val name = declaration.name.asString()
-                if (name == "arrayConcat" || name == "primitiveArrayConcat")
-                    return declaration
 
                 // Some call stack problems
                 if (declaration is IrConstructor)
