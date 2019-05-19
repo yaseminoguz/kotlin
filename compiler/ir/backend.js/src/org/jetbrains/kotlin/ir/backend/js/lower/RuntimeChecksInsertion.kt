@@ -31,6 +31,14 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
         if (irFile.name.contains("coroutineInternalJS.kt"))
             return
 
+        // Dynamic iterator wrong cast to Array<>
+        if (irFile.name.contains("dynamic.kt"))
+            return
+
+        // org.jetbrains.kotlin.js.test.ir.semantics.IrBoxJsTestGenerated.Multideclaration#testMultiValForMap
+        if (irFile.name.contains("InternalHashCodeMap.kt"))
+            return
+
         irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
             override fun visitFunction(declaration: IrFunction): IrStatement {
                 if (declaration.hasAnnotation(context.intrinsics.doNotIntrinsifyAnnotationSymbol))
@@ -51,10 +59,6 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
             }
 
             override fun visitExpression(expression: IrExpression): IrExpression {
-                if (expression is IrWhen || expression is IrBranch) {
-                    return expression
-                }
-
                 if (expression is IrCall) {
                     // EQEQ
                     if (expression.symbol.owner.getPackageFragment()?.fqName == FqName("kotlin.internal.ir")) {
