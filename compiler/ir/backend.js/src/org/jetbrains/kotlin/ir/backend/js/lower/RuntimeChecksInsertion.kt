@@ -50,6 +50,10 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
                     return declaration
                 }
 
+                if (declaration.symbol == context.intrinsics.typeCheckIntrinsic) {
+                    return declaration
+                }
+
                 // Some call stack problems
                 if (declaration is IrConstructor)
                     return declaration
@@ -65,7 +69,8 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
                         return expression
                     }
 
-                    if (function.fqNameWhenAvailable == FqName("kotlin.js.js")) {
+                    val fqName = function.fqNameWhenAvailable
+                    if (fqName == FqName("kotlin.js.js")) {
                         return expression
                     }
                 }
@@ -98,10 +103,6 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
             return expression
 
         if (type.isNothing())
-            return expression
-
-        // Some boolean operators return numbers (^)
-        if (type.isBoolean())
             return expression
 
         if (typeSymbol == context.continuationClass)
