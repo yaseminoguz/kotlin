@@ -7,8 +7,8 @@ fun <T>test_1(x: T): T = null as T
 fun <T>test_2(x: () -> T): T = null as T
 
 fun case_1() {
-    null?.<!IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>run<!> { return }
-    null!!.<!UNREACHABLE_CODE!><!IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>run<!> { throw Exception() }<!>
+    null?.run { return }
+    null!!.<!UNREACHABLE_CODE!>run { throw Exception() }<!>
 }
 
 fun case_2() {
@@ -40,5 +40,16 @@ class Context<T>
 fun <T> Any.decodeIn(typeFrom: Context<in T>): T = something()
 
 fun <T> Any?.decodeOut(typeFrom: Context<out T>): T {
-    return this?.<!IMPLICIT_NOTHING_AS_TYPE_PARAMETER, NI;IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>decodeIn<!>(typeFrom) ?: <!UNRESOLVED_REFERENCE!>error<!>("")
+    return this?.<!NI;IMPLICIT_NOTHING_AS_TYPE_PARAMETER, IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>decodeIn<!>(typeFrom) ?: <!UNRESOLVED_REFERENCE!>println<!>("")
+}
+
+class TrieNode<out E> {
+    companion object {
+        internal val EMPTY = TrieNode<Nothing>()
+    }
+}
+class PersistentHashSet<out E>(root: TrieNode<E>) {
+    companion object {
+        internal val EMPTY = PersistentHashSet(TrieNode.EMPTY)
+    }
 }

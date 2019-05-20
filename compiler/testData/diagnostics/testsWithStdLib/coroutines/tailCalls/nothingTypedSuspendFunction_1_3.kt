@@ -3,6 +3,6 @@ import kotlin.coroutines.*
 import kotlin.coroutines.intrinsics.*
 
 suspend fun suspendLogAndThrow(exception: Throwable): Nothing = <!IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>suspendCoroutineUninterceptedOrReturn<!> { c ->
-    c.<!IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>resumeWithException<!>(exception)
+    c.resumeWithException(exception)
     COROUTINE_SUSPENDED
 }
