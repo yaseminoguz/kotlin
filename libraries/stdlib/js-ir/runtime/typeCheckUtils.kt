@@ -99,7 +99,7 @@ private fun isJsArray(obj: Any): Boolean {
 }
 
 public fun isArray(obj: Any): Boolean {
-    return isJsArray(obj) && !(obj.asDynamic().`$type$`)
+    return isArrayish(obj) // isJsArray(obj) // && !(obj.asDynamic().`$type$`)
 }
 
 public fun isArrayish(o: dynamic) =
