@@ -9,29 +9,30 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
-import org.jetbrains.kotlin.idea.core.script.NewScriptDefinitionContributor
+import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionSourceAsContributor
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionsManager
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-abstract class AsyncScriptDefinitionsContributor(protected val project: Project) : NewScriptDefinitionContributor {
+abstract class AsyncScriptDefinitionsContributor(protected val project: Project) : ScriptDefinitionSourceAsContributor {
     abstract val progressMessage: String
 
     override fun isReady(): Boolean = _definitions != null
 
-    override fun getNewDefinitions(): List<ScriptDefinition> {
-        definitionsLock.read {
-            if (_definitions != null) {
-                return _definitions!!
+    override val definitions: Sequence<ScriptDefinition>
+        get() {
+            definitionsLock.read {
+                if (_definitions != null) {
+                    return _definitions!!.asSequence()
+                }
             }
-        }
 
-        forceStartUpdate = false
-        asyncRunUpdateScriptTemplates()
-        return emptyList()
-    }
+            forceStartUpdate = false
+            asyncRunUpdateScriptTemplates()
+            return emptySequence()
+        }
 
     protected fun asyncRunUpdateScriptTemplates() {
         val backgroundTask = inProgressLock.write {

@@ -39,10 +39,7 @@ import org.jetbrains.kotlin.idea.caches.project.SdkInfo
 import org.jetbrains.kotlin.idea.caches.project.getScriptRelatedModuleInfo
 import org.jetbrains.kotlin.idea.core.script.settings.KotlinScriptingSettings
 import org.jetbrains.kotlin.script.ScriptTemplatesProvider
-import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
-import org.jetbrains.kotlin.scripting.definitions.LazyScriptDefinitionProvider
-import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
-import org.jetbrains.kotlin.scripting.definitions.ScriptDefinitionProvider
+import org.jetbrains.kotlin.scripting.definitions.*
 import org.jetbrains.kotlin.utils.PathUtil
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import org.jetbrains.kotlin.utils.addToStdlib.flattenTo
@@ -58,11 +55,12 @@ import kotlin.script.experimental.dependencies.asSuccess
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.host.configurationDependencies
 import kotlin.script.experimental.jvm.JvmDependency
+import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 import kotlin.script.experimental.jvm.util.scriptCompilationClasspathFromContextOrStdlib
 import kotlin.script.templates.standard.ScriptTemplateWithArgs
 
 class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinitionProvider() {
-    private var definitionsByContributor = mutableMapOf<ScriptDefinitionContributor, List<ScriptDefinition>>()
+    private var definitionsBySource = mutableMapOf<ScriptDefinitionsSource, List<ScriptDefinition>>()
     private var definitions: List<ScriptDefinition>? = null
 
     private val failedContributorsHashes = HashSet<Int>()
@@ -88,24 +86,16 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
 
     override fun findScriptDefinition(fileName: String): KotlinScriptDefinition? = findDefinition(fileName)?.legacyDefinition
 
-    fun reloadDefinitionsBy(contributor: ScriptDefinitionContributor) = lock.write {
+    fun reloadDefinitionsBy(source: ScriptDefinitionsSource) = lock.write {
         if (definitions == null) return // not loaded yet
 
-        if (contributor !in definitionsByContributor) error("Unknown contributor: ${contributor.id}")
+        if (source !in definitionsBySource) error("Unknown script definition source: $source")
 
-        definitionsByContributor[contributor] = contributor.safeGetDefinitions()
+        definitionsBySource[source] = source.safeGetDefinitions()
 
-        definitions = definitionsByContributor.values.flattenTo(mutableListOf())
+        definitions = definitionsBySource.values.flattenTo(mutableListOf())
 
         updateDefinitions()
-    }
-
-    fun getDefinitionsBy(contributor: ScriptDefinitionContributor): List<ScriptDefinition> = lock.write {
-        if (definitions == null) return emptyList() // not loaded yet
-
-        if (contributor !in definitionsByContributor) error("Unknown contributor: ${contributor.id}")
-
-        return definitionsByContributor[contributor] ?: emptyList()
     }
 
     override val currentDefinitions
@@ -115,21 +105,22 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
                 definitions!!
             }).asSequence().filter { KotlinScriptingSettings.getInstance(project).isScriptDefinitionEnabled(it) }
 
-    private fun getContributors(): List<ScriptDefinitionContributor> {
+    private fun getSources(): List<ScriptDefinitionsSource> {
         @Suppress("DEPRECATION")
         val fromDeprecatedEP = Extensions.getArea(project).getExtensionPoint(ScriptTemplatesProvider.EP_NAME).extensions.toList()
-            .map(::ScriptTemplatesProviderAdapter)
+            .map { ScriptTemplatesProviderAdapter(it).asSource() }
         val fromNewEp = Extensions.getArea(project).getExtensionPoint(ScriptDefinitionContributor.EP_NAME).extensions.toList()
+            .map { it.asSource() }
         return fromNewEp.dropLast(1) + fromDeprecatedEP + fromNewEp.last()
     }
 
     fun reloadScriptDefinitions() = lock.write {
-        for (contributor in getContributors()) {
-            val definitions = contributor.safeGetDefinitions()
-            definitionsByContributor[contributor] = definitions
+        for (source in getSources()) {
+            val definitions = source.safeGetDefinitions()
+            definitionsBySource[source] = definitions
         }
 
-        definitions = definitionsByContributor.values.flattenTo(mutableListOf())
+        definitions = definitionsBySource.values.flattenTo(mutableListOf())
 
         updateDefinitions()
     }
@@ -146,8 +137,9 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
     }
 
     fun isReady(): Boolean {
-        return definitionsByContributor.keys.all { contributor ->
-            contributor.isReady()
+        return definitionsBySource.keys.all { source ->
+            // TODO: implement another API for readiness checking
+            (source as? ScriptDefinitionContributor)?.isReady() != false
         }
     }
 
@@ -194,9 +186,9 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
         }
     }
 
-    private fun ScriptDefinitionContributor.safeGetDefinitions(): List<ScriptDefinition> {
+    private fun ScriptDefinitionsSource.safeGetDefinitions(): List<ScriptDefinition> {
         if (!failedContributorsHashes.contains(this@safeGetDefinitions.hashCode())) try {
-            return getDefinitions().map { ScriptDefinition.FromLegacy(getScriptingHostConfiguration(), it) }
+            return definitions.toList()
         } catch (t: Throwable) {
             // reporting failed loading only once
             LOG.error("[kts] cannot load script definitions using $this", t)
@@ -214,6 +206,7 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
 
 private val LOG = Logger.getInstance("ScriptTemplatesProviders")
 
+// TODO: consider rewriting to return sequence
 fun loadDefinitionsFromTemplates(
     templateClassNames: List<String>,
     templateClasspath: List<File>,
@@ -263,10 +256,16 @@ fun loadDefinitionsFromTemplates(
     }
 }
 
+@Deprecated("migrating to new configuration refinement: use ScriptDefinitionsSource internally and kotlin.script.experimental.intellij.ScriptDefinitionsProvider as a providing extension point")
 interface ScriptDefinitionContributor {
+
+    @Deprecated("migrating to new configuration refinement: drop usages")
     val id: String
 
+    @Deprecated("migrating to new configuration refinement: use ScriptDefinitionsSource instead")
     fun getDefinitions(): List<KotlinScriptDefinition>
+
+    @Deprecated("migrating to new configuration refinement: drop usages")
     fun isReady() = true
 
     companion object {
@@ -276,16 +275,28 @@ interface ScriptDefinitionContributor {
         inline fun <reified T> find(project: Project) =
             Extensions.getArea(project).getExtensionPoint(ScriptDefinitionContributor.EP_NAME).extensions.filterIsInstance<T>().firstOrNull()
     }
-
 }
 
-// TODO: find better naming for the interface and the method
-interface NewScriptDefinitionContributor : ScriptDefinitionContributor {
+@Deprecated("migrating to new configuration refinement: use ScriptDefinitionsSource directly instead")
+interface ScriptDefinitionSourceAsContributor : ScriptDefinitionContributor, ScriptDefinitionsSource {
 
-    fun getNewDefinitions(): List<ScriptDefinition>
-
-    override fun getDefinitions(): List<KotlinScriptDefinition> = getNewDefinitions().map { it.legacyDefinition }
+    override fun getDefinitions(): List<KotlinScriptDefinition> = definitions.map { it.legacyDefinition }.toList()
 }
+
+@Deprecated("migrating to new configuration refinement: convert all contributors to ScriptDefinitionsSource/ScriptDefinitionsProvider")
+class ScriptDefinitionSourceFromContributor(
+    val contributor: ScriptDefinitionContributor,
+    val hostConfiguration: ScriptingHostConfiguration = defaultJvmScriptingHostConfiguration
+) : ScriptDefinitionsSource {
+    override val definitions: Sequence<ScriptDefinition>
+        get() =
+            if (contributor is ScriptDefinitionsSource) contributor.definitions
+            else contributor.getDefinitions().asSequence().map { ScriptDefinition.FromLegacy(hostConfiguration, it) }
+}
+
+fun ScriptDefinitionContributor.asSource(): ScriptDefinitionsSource =
+    if (this is ScriptDefinitionsSource) this
+    else ScriptDefinitionSourceFromContributor(this)
 
 class StandardScriptDefinitionContributor(project: Project) : ScriptDefinitionContributor {
     private val standardIdeScriptDefinition = StandardIdeScriptDefinition(project)

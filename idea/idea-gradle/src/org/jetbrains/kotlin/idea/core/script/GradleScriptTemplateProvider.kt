@@ -53,7 +53,7 @@ import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 import kotlin.script.experimental.location.ScriptExpectedLocation
 import kotlin.script.templates.standard.ScriptTemplateWithArgs
 
-class GradleScriptDefinitionsContributor(private val project: Project) : NewScriptDefinitionContributor {
+class GradleScriptDefinitionsContributor(private val project: Project) : ScriptDefinitionSourceAsContributor {
 
     override val id: String = "Gradle Kotlin DSL"
     private val failedToLoad = AtomicBoolean(false)
@@ -85,53 +85,50 @@ class GradleScriptDefinitionsContributor(private val project: Project) : NewScri
         initializeScriptModificationListener(project)
     }
 
-    override fun getNewDefinitions(): List<ScriptDefinition> {
-        return loadDefinitions()
-    }
-
     // NOTE: control flow here depends on suppressing exceptions from loadGradleTemplates calls
     // TODO: possibly combine exceptions from every loadGradleTemplates call, be mindful of KT-19276
-    private fun loadDefinitions(): List<ScriptDefinition> {
-        val kotlinDslDependencySelector = Regex("^gradle-(?:kotlin-dsl|core).*\\.jar\$")
-        val kotlinDslAdditionalResolverCp = ::kotlinStdlibAndCompiler
+    override val definitions: Sequence<ScriptDefinition>
+        get() {
+            val kotlinDslDependencySelector = Regex("^gradle-(?:kotlin-dsl|core).*\\.jar\$")
+            val kotlinDslAdditionalResolverCp = ::kotlinStdlibAndCompiler
 
-        failedToLoad.set(false)
+            failedToLoad.set(false)
 
-        val kotlinDslTemplates = LinkedHashSet<ScriptDefinition>()
+            val kotlinDslTemplates = LinkedHashSet<ScriptDefinition>()
 
-        loadGradleTemplates(
-            templateClass = "org.gradle.kotlin.dsl.KotlinInitScript",
-            dependencySelector = kotlinDslDependencySelector,
-            additionalResolverClasspath = kotlinDslAdditionalResolverCp
+            loadGradleTemplates(
+                templateClass = "org.gradle.kotlin.dsl.KotlinInitScript",
+                dependencySelector = kotlinDslDependencySelector,
+                additionalResolverClasspath = kotlinDslAdditionalResolverCp
 
-        ).let { kotlinDslTemplates.addAll(it) }
+            ).let { kotlinDslTemplates.addAll(it) }
 
-        loadGradleTemplates(
-            templateClass = "org.gradle.kotlin.dsl.KotlinSettingsScript",
-            dependencySelector = kotlinDslDependencySelector,
-            additionalResolverClasspath = kotlinDslAdditionalResolverCp
+            loadGradleTemplates(
+                templateClass = "org.gradle.kotlin.dsl.KotlinSettingsScript",
+                dependencySelector = kotlinDslDependencySelector,
+                additionalResolverClasspath = kotlinDslAdditionalResolverCp
 
-        ).let { kotlinDslTemplates.addAll(it) }
+            ).let { kotlinDslTemplates.addAll(it) }
 
-        // KotlinBuildScript should be last because it has wide scriptFilePattern
-        loadGradleTemplates(
-            templateClass = "org.gradle.kotlin.dsl.KotlinBuildScript",
-            dependencySelector = kotlinDslDependencySelector,
-            additionalResolverClasspath = kotlinDslAdditionalResolverCp
-        ).let { kotlinDslTemplates.addAll(it) }
+            // KotlinBuildScript should be last because it has wide scriptFilePattern
+            loadGradleTemplates(
+                templateClass = "org.gradle.kotlin.dsl.KotlinBuildScript",
+                dependencySelector = kotlinDslDependencySelector,
+                additionalResolverClasspath = kotlinDslAdditionalResolverCp
+            ).let { kotlinDslTemplates.addAll(it) }
 
 
-        if (kotlinDslTemplates.isNotEmpty()) {
-            return kotlinDslTemplates.toList()
+            if (kotlinDslTemplates.isNotEmpty()) {
+                return kotlinDslTemplates.asSequence()
+            }
+
+            val default = tryToLoadOldBuildScriptDefinition()
+            if (default.isNotEmpty()) {
+                return default.asSequence()
+            }
+
+            return sequenceOf(ErrorGradleScriptDefinition())
         }
-
-        val default = tryToLoadOldBuildScriptDefinition()
-        if (default.isNotEmpty()) {
-            return default
-        }
-
-        return listOf(ErrorGradleScriptDefinition())
-    }
 
     private fun tryToLoadOldBuildScriptDefinition(): List<ScriptDefinition> {
         failedToLoad.set(false)
