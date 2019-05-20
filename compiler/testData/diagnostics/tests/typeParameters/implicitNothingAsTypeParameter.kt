@@ -1,4 +1,4 @@
-// !DIAGNOSTICS: -UNUSED_PARAMETER -UNCHECKED_CAST
+// !DIAGNOSTICS: -UNUSED_PARAMETER -UNUSED_VARIABLE -UNCHECKED_CAST
 // !WITH_NEW_INFERENCE
 // SKIP_TXT
 // Issue: KT-20849
@@ -7,8 +7,8 @@ fun <T>test_1(x: T): T = null as T
 fun <T>test_2(x: () -> T): T = null as T
 
 fun case_1() {
-    null?.<!IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>run<!> { return }
-    null!!.<!UNREACHABLE_CODE!><!IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>run<!> { throw Exception() }<!>
+    null?.run { return }
+    null!!.<!UNREACHABLE_CODE!>run { throw Exception() }<!>
 }
 
 fun case_2() {
@@ -39,6 +39,29 @@ class Context<T>
 
 fun <T> Any.decodeIn(typeFrom: Context<in T>): T = something()
 
-fun <T> Any?.decodeOut(typeFrom: Context<out T>): T {
-    return this?.<!IMPLICIT_NOTHING_AS_TYPE_PARAMETER, NI;IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>decodeIn<!>(typeFrom) ?: <!UNRESOLVED_REFERENCE!>error<!>("")
+fun <T> Any?.decodeOut1(typeFrom: Context<out T>): T {
+    return this?.<!OI;IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>decodeIn<!>(typeFrom) ?: <!OI;TYPE_MISMATCH!>kotlin.Unit<!>
+}
+
+fun <T> Any.decodeOut2(typeFrom: Context<out T>): T {
+    <!OI;UNREACHABLE_CODE!>val x: Nothing =<!> this.decodeIn(typeFrom)
+}
+
+fun <T> Any.decodeOut3(typeFrom: Context<out T>): T {
+    <!OI;UNREACHABLE_CODE!>val x =<!> this.<!OI;IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>decodeIn<!>(typeFrom)
+}
+
+fun <T> Any.decodeOut4(typeFrom: Context<out T>): T {
+    <!OI;UNREACHABLE_CODE!>val x: Any =<!> this.<!OI;IMPLICIT_NOTHING_AS_TYPE_PARAMETER!>decodeIn<!>(typeFrom)
+}
+
+class TrieNode<out E> {
+    companion object {
+        internal val EMPTY = TrieNode<Nothing>()
+    }
+}
+class PersistentHashSet<out E>(root: TrieNode<E>) {
+    companion object {
+        internal val EMPTY = PersistentHashSet(TrieNode.EMPTY)
+    }
 }
