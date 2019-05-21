@@ -10,7 +10,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.scripting.definitions.ScriptDependenciesProvider
-import org.jetbrains.kotlin.scripting.definitions.findNewScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
 import org.jetbrains.kotlin.scripting.resolve.RefinementResults
 import org.jetbrains.kotlin.scripting.resolve.ScriptReportSink
 import org.jetbrains.kotlin.scripting.resolve.VirtualFileScriptSource
@@ -35,7 +35,7 @@ class CliScriptDependenciesProvider(private val project: Project) : ScriptDepend
         val cached = cache[path]
         return if (cached != null) cached
         else {
-            val scriptDef = file.findNewScriptDefinition(project)
+            val scriptDef = file.findScriptDefinition(project)
             if (scriptDef != null) {
                 val result = refineScriptCompilationConfiguration(VirtualFileScriptSource(file), scriptDef, project)
 

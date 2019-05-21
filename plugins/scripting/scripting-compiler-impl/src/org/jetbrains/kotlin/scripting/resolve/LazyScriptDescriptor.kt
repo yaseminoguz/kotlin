@@ -33,10 +33,10 @@ import org.jetbrains.kotlin.resolve.scopes.LexicalScope
 import org.jetbrains.kotlin.resolve.scopes.LexicalScopeImpl
 import org.jetbrains.kotlin.resolve.scopes.LexicalScopeKind
 import org.jetbrains.kotlin.resolve.source.toSourceElement
-import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.ScriptDependenciesProvider
 import org.jetbrains.kotlin.scripting.definitions.ScriptPriorities
-import org.jetbrains.kotlin.scripting.definitions.scriptDefinitionByFileName
+import org.jetbrains.kotlin.scripting.definitions.findScriptDefinitionByFileName
 import org.jetbrains.kotlin.types.TypeSubstitutor
 import org.jetbrains.kotlin.types.typeUtil.isNothing
 import org.jetbrains.kotlin.types.typeUtil.isUnit
@@ -104,8 +104,9 @@ class LazyScriptDescriptor(
 
     override fun getPriority() = priority
 
-    val scriptDefinition: () -> KotlinScriptDefinition = resolveSession.storageManager.createLazyValue {
-        scriptDefinitionByFileName(
+    // rewrite without using legacyDefinition below
+    val scriptDefinition: () -> ScriptDefinition = resolveSession.storageManager.createLazyValue {
+        findScriptDefinitionByFileName(
             resolveSession.project,
             scriptInfo.script.containingKtFile.name
         )
@@ -128,7 +129,7 @@ class LazyScriptDescriptor(
     override fun getUnsubstitutedPrimaryConstructor() = super.getUnsubstitutedPrimaryConstructor()!!
 
     internal val baseClassDescriptor: () -> ClassDescriptor? = resolveSession.storageManager.createNullableLazyValue {
-        val template = scriptDefinition().template
+        val template = scriptDefinition().legacyDefinition.template
         findTypeDescriptor(
             template,
             if (template.qualifiedName?.startsWith("kotlin.script.templates.standard") == true) Errors.MISSING_SCRIPT_STANDARD_TEMPLATE
@@ -175,7 +176,7 @@ class LazyScriptDescriptor(
             }
         }
 
-        scriptDefinition().implicitReceivers.mapNotNullTo(res) { receiver ->
+        scriptDefinition().legacyDefinition.implicitReceivers.mapNotNullTo(res) { receiver ->
             findTypeDescriptor(receiver, Errors.MISSING_SCRIPT_RECEIVER_CLASS)
         }
 
@@ -222,7 +223,7 @@ class LazyScriptDescriptor(
     private val scriptOuterScope: () -> LexicalScope = resolveSession.storageManager.createLazyValue {
         var outerScope = super.getOuterScope()
         val outerScopeReceivers = implicitReceivers.let {
-            if (scriptDefinition().providedProperties.isEmpty()) {
+            if (scriptDefinition().legacyDefinition.providedProperties.isEmpty()) {
                 it
             } else {
                 it + ScriptProvidedPropertiesDescriptor(this)

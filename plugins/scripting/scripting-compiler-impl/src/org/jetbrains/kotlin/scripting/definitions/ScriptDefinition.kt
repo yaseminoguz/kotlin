@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.scripting.definitions
 
+import com.intellij.openapi.util.UserDataHolderBase
 import org.jetbrains.kotlin.scripting.resolve.KotlinScriptDefinitionFromAnnotatedTemplate
 import java.io.File
 import kotlin.reflect.KClass
@@ -18,7 +19,7 @@ import kotlin.script.experimental.jvm.jvm
 // Transitional class/implementation - migrating to the new API
 // TODO: deprecate KotlinScriptDefinition
 // TODO: name could be confused with KotlinScriptDefinition, discuss naming
-abstract class ScriptDefinition {
+abstract class ScriptDefinition : UserDataHolderBase() {
 
     abstract val legacyDefinition: KotlinScriptDefinition
     abstract val hostConfiguration: ScriptingHostConfiguration
@@ -33,7 +34,14 @@ abstract class ScriptDefinition {
 
     abstract val contextClassLoader: ClassLoader?
 
+    // Target platform for script, ex. "JVM", "JS", "NATIVE"
+    open val platform: String
+        get() = "JVM"
+
     open val isDefault = false
+
+    abstract val baseClassType: KotlinType
+    abstract val compilerOptions: Iterable<String>
 
     inline fun <reified T : KotlinScriptDefinition> asLegacyOrNull(): T? =
         if (this is FromLegacy) legacyDefinition as? T else null
@@ -65,10 +73,19 @@ abstract class ScriptDefinition {
 
         override val definitionId: String get() = legacyDefinition::class.qualifiedName ?: "unknown"
 
+        override val platform: String
+            get() = legacyDefinition.platform
+
         override val contextClassLoader: ClassLoader?
             get() = legacyDefinition.template.java.classLoader
 
-        override fun equals(other: Any?): Boolean = this === other || legacyDefinition.equals((other as? FromLegacy)?.legacyDefinition)
+        override val baseClassType: KotlinType
+            get() = KotlinType(legacyDefinition.template)
+
+        override val compilerOptions: Iterable<String>
+            get() = legacyDefinition.additionalCompilerArguments ?: emptyList()
+
+        override fun equals(other: Any?): Boolean = this === other || legacyDefinition == (other as? FromLegacy)?.legacyDefinition
 
         override fun hashCode(): Int = legacyDefinition.hashCode()
     }
@@ -108,9 +125,15 @@ abstract class ScriptDefinition {
                 ?: hostConfiguration[ScriptingHostConfiguration.jvm.baseClassLoader]
         }
 
+        override val baseClassType: KotlinType
+            get() = compilationConfiguration[ScriptCompilationConfiguration.baseClass]!!
+
+        override val compilerOptions: Iterable<String>
+            get() = compilationConfiguration[ScriptCompilationConfiguration.compilerOptions].orEmpty()
+
         override fun equals(other: Any?): Boolean = this === other ||
                 (other as? FromConfigurations)?.let {
-                    compilationConfiguration.equals(it.compilationConfiguration) && evaluationConfiguration.equals(it.evaluationConfiguration)
+                    compilationConfiguration == it.compilationConfiguration && evaluationConfiguration == it.evaluationConfiguration
                 } == true
 
         override fun hashCode(): Int = compilationConfiguration.hashCode() + 37 * evaluationConfiguration.hashCode()

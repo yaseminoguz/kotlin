@@ -14,7 +14,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import kotlinx.coroutines.Runnable
 import org.jetbrains.kotlin.idea.core.script.ScriptDependenciesUpdater
 import org.jetbrains.kotlin.idea.core.script.settings.KotlinScriptingSettings
-import org.jetbrains.kotlin.scripting.definitions.findNewScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
 import org.jetbrains.kotlin.scripting.resolve.VirtualFileScriptSource
 import org.jetbrains.kotlin.scripting.resolve.refineScriptCompilationConfiguration
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -29,7 +29,7 @@ class AsyncScriptDependenciesLoader internal constructor(project: Project) : Scr
     private var backgroundTasksQueue: LoaderBackgroundTask? = null
 
     override fun isApplicable(file: VirtualFile): Boolean {
-        val scriptDefinition = file.findNewScriptDefinition(project) ?: return false
+        val scriptDefinition = file.findScriptDefinition(project) ?: return false
         return ScriptDependenciesUpdater.getInstance(project).isAsyncDependencyResolver(scriptDefinition)
     }
 
@@ -70,7 +70,7 @@ class AsyncScriptDependenciesLoader internal constructor(project: Project) : Scr
     }
 
     private fun runDependenciesUpdate(file: VirtualFile) {
-        val scriptDef = file.findNewScriptDefinition(project) ?: return
+        val scriptDef = file.findScriptDefinition(project) ?: return
 
         debug(file) { "update started" }
 

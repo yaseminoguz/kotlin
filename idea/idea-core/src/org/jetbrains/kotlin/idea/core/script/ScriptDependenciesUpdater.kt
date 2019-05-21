@@ -42,7 +42,7 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.NotNullableUserDataProperty
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
-import org.jetbrains.kotlin.scripting.definitions.findNewScriptDefinition
+import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
 import org.jetbrains.kotlin.scripting.resolve.LegacyResolverWrapper
 import org.jetbrains.kotlin.scripting.resolve.RefinementResults
 import kotlin.script.experimental.dependencies.AsyncDependenciesResolver
@@ -203,7 +203,7 @@ class ScriptDependenciesUpdater(
         }
 
         fun isAsyncDependencyResolver(file: KtFile): Boolean {
-            val scriptDefinition = file.virtualFile.findNewScriptDefinition(file.project) ?: return false
+            val scriptDefinition = file.virtualFile.findScriptDefinition(file.project) ?: return false
             return getInstance(file.project).isAsyncDependencyResolver(scriptDefinition)
         }
     }

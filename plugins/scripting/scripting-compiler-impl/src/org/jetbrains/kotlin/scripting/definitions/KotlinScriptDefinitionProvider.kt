@@ -7,13 +7,15 @@ package org.jetbrains.kotlin.scripting.definitions
 
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.project.Project
-import kotlin.script.experimental.api.ScriptCompilationConfiguration
-import kotlin.script.experimental.api.ScriptEvaluationConfiguration
 
 interface ScriptDefinitionProvider {
+    @Deprecated("Migrating to configuration refinement")
     fun findScriptDefinition(fileName: String): KotlinScriptDefinition?
-    fun isScript(fileName: String): Boolean
+
+    @Deprecated("Migrating to configuration refinement")
     fun getDefaultScriptDefinition(): KotlinScriptDefinition
+
+    fun isScript(fileName: String): Boolean
 
     fun findDefinition(fileName: String): ScriptDefinition?
     fun getDefaultDefinition(): ScriptDefinition
