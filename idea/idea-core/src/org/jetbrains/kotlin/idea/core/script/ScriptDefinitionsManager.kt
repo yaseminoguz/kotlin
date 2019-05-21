@@ -237,7 +237,7 @@ fun loadDefinitionsFromTemplates(
                     val hostConfiguration = ScriptingHostConfiguration(baseHostConfiguration) {
                         configurationDependencies(JvmDependency(classpath))
                     }
-                    ScriptDefinition.FromTemplate(hostConfiguration, template, KotlinScriptDefinition::class)
+                    ScriptDefinition.FromTemplate(hostConfiguration, template, ScriptDefinition::class)
                 }
                 else -> {
                     LOG.warn("[kts] cannot find a valid script definition annotation on the class $template")
