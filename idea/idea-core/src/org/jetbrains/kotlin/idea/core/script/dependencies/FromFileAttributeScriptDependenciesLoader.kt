@@ -9,7 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.core.script.scriptCompilationConfiguration
 import org.jetbrains.kotlin.idea.core.script.scriptDependencies
-import org.jetbrains.kotlin.scripting.resolve.RefinementResults
+import org.jetbrains.kotlin.scripting.resolve.ScriptCompilationConfigurationWrapper
 import org.jetbrains.kotlin.scripting.resolve.VirtualFileScriptSource
 
 // TODO: rename and provide alias for compatibility - this is not only about dependencies anymore
@@ -21,11 +21,11 @@ class FromFileAttributeScriptDependenciesLoader(project: Project) : ScriptDepend
 
     override fun loadDependencies(file: VirtualFile) {
         file.scriptCompilationConfiguration?.let {
-            RefinementResults.FromRefinement(VirtualFileScriptSource(file), it).apply {
+            ScriptCompilationConfigurationWrapper.FromCompilationConfiguration(VirtualFileScriptSource(file), it).apply {
                 debug(file) { "refined configuration from fileAttributes = $it" }
             }
         } ?: file.scriptDependencies?.let {
-            RefinementResults.FromLegacy(VirtualFileScriptSource(file), it).apply {
+            ScriptCompilationConfigurationWrapper.FromLegacy(VirtualFileScriptSource(file), it).apply {
                 debug(file) { "dependencies from fileAttributes = $it" }
             }
         }?.let {

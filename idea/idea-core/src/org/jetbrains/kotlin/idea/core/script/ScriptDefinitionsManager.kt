@@ -177,7 +177,7 @@ class ScriptDefinitionsManager(private val project: Project) : LazyScriptDefinit
         scriptDefinitionsCacheLock.write { scriptDefinitionsCache.clear() }
 
         // TODO: clear by script type/definition
-        ServiceManager.getService(project, ScriptDependenciesCache::class.java).clear()
+        ServiceManager.getService(project, ScriptsCompilationConfigurationCache::class.java).clear()
 
         ApplicationManager.getApplication().invokeLater {
             if (!project.isDisposed) {

@@ -12,7 +12,7 @@ import com.intellij.openapi.progress.util.BackgroundTaskUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import kotlinx.coroutines.Runnable
-import org.jetbrains.kotlin.idea.core.script.ScriptDependenciesUpdater
+import org.jetbrains.kotlin.idea.core.script.ScriptsCompilationConfigurationUpdater
 import org.jetbrains.kotlin.idea.core.script.settings.KotlinScriptingSettings
 import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
 import org.jetbrains.kotlin.scripting.resolve.VirtualFileScriptSource
@@ -30,7 +30,7 @@ class AsyncScriptDependenciesLoader internal constructor(project: Project) : Scr
 
     override fun isApplicable(file: VirtualFile): Boolean {
         val scriptDefinition = file.findScriptDefinition(project) ?: return false
-        return ScriptDependenciesUpdater.getInstance(project).isAsyncDependencyResolver(scriptDefinition)
+        return ScriptsCompilationConfigurationUpdater.getInstance(project).isAsyncDependencyResolver(scriptDefinition)
     }
 
     override fun loadDependencies(file: VirtualFile) {

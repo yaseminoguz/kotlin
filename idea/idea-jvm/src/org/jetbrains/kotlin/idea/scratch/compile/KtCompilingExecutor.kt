@@ -186,7 +186,7 @@ class KtCompilingExecutor(file: ScratchFile) : ScratchExecutor(file) {
             javaParameters.classPath.addAll(JavaParametersBuilder.getModuleDependencies(module))
         }
 
-        ScriptDependenciesManager.getInstance(originalFile.project).getScriptRefinementResults(originalFile.virtualFile)?.let {
+        ScriptDependenciesManager.getInstance(originalFile.project).getRefinedCompilationConfiguration(originalFile.virtualFile)?.let {
             javaParameters.classPath.addAll(it.dependenciesClassPath.map { f -> f.absolutePath })
         }
 

@@ -105,75 +105,87 @@ class ScriptLightVirtualFile(name: String, private val _path: String?, text: Str
     override fun getCanonicalPath(): String? = path
 }
 
-abstract class RefinementResults(val script: SourceCode) {
-    abstract val compilationConfiguration: ScriptCompilationConfiguration?
-    abstract val scriptDependencies: ScriptDependencies?
+abstract class ScriptCompilationConfigurationWrapper(val script: SourceCode) {
+    abstract val configuration: ScriptCompilationConfiguration?
+
+    @Deprecated("Use configuration collection instead")
+    abstract val legacyDependencies: ScriptDependencies?
 
     // optimizing most common ops for the IDE
-    // TODO: drop after complete migration
-    @Deprecated("migrating to new configuration refinement")
+    // TODO: consider dropping after complete migration
     abstract val dependenciesClassPath: List<File>
-
-    @Deprecated("migrating to new configuration refinement")
     abstract val dependenciesSources: List<File>
-
-    @Deprecated("migrating to new configuration refinement")
     abstract val javaHome: File?
+    abstract val defaultImports: List<String>
+    abstract val importedScripts: List<File>
 
-    override fun equals(other: Any?): Boolean = script == (other as? RefinementResults)?.script
+    override fun equals(other: Any?): Boolean = script == (other as? ScriptCompilationConfigurationWrapper)?.script
 
     override fun hashCode(): Int = script.hashCode()
 
-    class FromRefinement(
+    class FromCompilationConfiguration(
         script: SourceCode,
-        override val compilationConfiguration: ScriptCompilationConfiguration?
-    ) : RefinementResults(script) {
+        override val configuration: ScriptCompilationConfiguration?
+    ) : ScriptCompilationConfigurationWrapper(script) {
 
         // TODO: check whether implemented optimization for frequent calls makes sense here
         override val dependenciesClassPath: List<File> by lazy {
-            compilationConfiguration?.get(ScriptCompilationConfiguration.ide.dependenciesSources).toClassPathOrEmpty()
+            configuration?.get(ScriptCompilationConfiguration.ide.dependenciesSources).toClassPathOrEmpty()
         }
 
         // TODO: check whether implemented optimization for frequent calls makes sense here
         override val dependenciesSources: List<File> by lazy {
-            compilationConfiguration?.get(ScriptCompilationConfiguration.ide.dependenciesSources).toClassPathOrEmpty()
+            configuration?.get(ScriptCompilationConfiguration.ide.dependenciesSources).toClassPathOrEmpty()
         }
 
         override val javaHome: File?
-            get() = compilationConfiguration?.get(ScriptCompilationConfiguration.hostConfiguration)?.get(ScriptingHostConfiguration.jvm.jdkHome)
+            get() = configuration?.get(ScriptCompilationConfiguration.hostConfiguration)?.get(ScriptingHostConfiguration.jvm.jdkHome)
 
-        override val scriptDependencies: ScriptDependencies?
-            get() = compilationConfiguration?.toDependencies(dependenciesClassPath)
+        override val defaultImports: List<String>
+            get() = configuration?.get(ScriptCompilationConfiguration.defaultImports).orEmpty()
+
+        override val importedScripts: List<File>
+            get() = configuration?.get(ScriptCompilationConfiguration.importScripts)
+                ?.mapNotNull { (it as? FileScriptSource)?.file }.orEmpty()
+
+        override val legacyDependencies: ScriptDependencies?
+            get() = configuration?.toDependencies(dependenciesClassPath)
 
         override fun equals(other: Any?): Boolean =
-            super.equals(other) && other is FromRefinement && compilationConfiguration == other.compilationConfiguration
+            super.equals(other) && other is FromCompilationConfiguration && configuration == other.configuration
 
-        override fun hashCode(): Int = super.hashCode() + 23 * (compilationConfiguration?.hashCode() ?: 1)
+        override fun hashCode(): Int = super.hashCode() + 23 * (configuration?.hashCode() ?: 1)
     }
 
     class FromLegacy(
         script: SourceCode,
-        override val scriptDependencies: ScriptDependencies?
-    ) : RefinementResults(script) {
+        override val legacyDependencies: ScriptDependencies?
+    ) : ScriptCompilationConfigurationWrapper(script) {
 
         override val dependenciesClassPath: List<File>
-            get() = scriptDependencies?.classpath.orEmpty()
+            get() = legacyDependencies?.classpath.orEmpty()
 
         override val dependenciesSources: List<File>
-            get() = scriptDependencies?.sources.orEmpty()
+            get() = legacyDependencies?.sources.orEmpty()
 
         override val javaHome: File?
-            get() = scriptDependencies?.javaHome
+            get() = legacyDependencies?.javaHome
 
-        override val compilationConfiguration: ScriptCompilationConfiguration?
-            get() = scriptDependencies?.let {
+        override val defaultImports: List<String>
+            get() = legacyDependencies?.imports.orEmpty()
+
+        override val importedScripts: List<File>
+            get() = legacyDependencies?.scripts.orEmpty()
+
+        override val configuration: ScriptCompilationConfiguration?
+            get() = legacyDependencies?.let {
                 TODO("drop or implement")
             }
 
         override fun equals(other: Any?): Boolean =
-            super.equals(other) && other is FromLegacy && scriptDependencies == other.scriptDependencies
+            super.equals(other) && other is FromLegacy && legacyDependencies == other.legacyDependencies
 
-        override fun hashCode(): Int = super.hashCode() + 31 * (scriptDependencies?.hashCode() ?: 1)
+        override fun hashCode(): Int = super.hashCode() + 31 * (legacyDependencies?.hashCode() ?: 1)
     }
 }
 
@@ -181,7 +193,7 @@ fun refineScriptCompilationConfiguration(
     script: SourceCode,
     definition: ScriptDefinition,
     project: Project
-): ResultWithDiagnostics<RefinementResults> {
+): ResultWithDiagnostics<ScriptCompilationConfigurationWrapper> {
     val ktFileSource = script.toKtFileSource(definition, project)
     val legacyDefinition = definition.asLegacyOrNull<KotlinScriptDefinition>()
     if (legacyDefinition == null) {
@@ -196,7 +208,7 @@ fun refineScriptCompilationConfiguration(
                 compilationConfiguration[ScriptCompilationConfiguration.refineConfigurationBeforeCompiling]?.handler, collectedData, script
             )
         }.onSuccess {
-            RefinementResults.FromRefinement(ktFileSource, it).asSuccess()
+            ScriptCompilationConfigurationWrapper.FromCompilationConfiguration(ktFileSource, it).asSuccess()
         }
     } else {
         val file = script.getVirtualFile(definition)
@@ -225,7 +237,7 @@ fun refineScriptCompilationConfiguration(
                 result.reports.mapToDiagnostics()
             )
         else
-            RefinementResults.FromLegacy(
+            ScriptCompilationConfigurationWrapper.FromLegacy(
                 ktFileSource,
                 result.dependencies?.adjustByDefinition(definition.legacyDefinition)
             ).asSuccess(result.reports.mapToDiagnostics())

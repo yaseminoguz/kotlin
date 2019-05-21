@@ -15,7 +15,7 @@ import com.intellij.openapi.util.EmptyRunnable
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.core.script.*
 import org.jetbrains.kotlin.idea.util.application.runWriteAction
-import org.jetbrains.kotlin.scripting.resolve.RefinementResults
+import org.jetbrains.kotlin.scripting.resolve.ScriptCompilationConfigurationWrapper
 import org.jetbrains.kotlin.scripting.resolve.ScriptReportSink
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.resultOrNull
@@ -31,40 +31,40 @@ abstract class ScriptDependenciesLoader(protected val project: Project) {
 
     protected var shouldNotifyRootsChanged = false
 
-    protected val cache: ScriptDependenciesCache = ServiceManager.getService(project, ScriptDependenciesCache::class.java)
+    protected val cache: ScriptsCompilationConfigurationCache = ServiceManager.getService(project, ScriptsCompilationConfigurationCache::class.java)
 
     private val reporter: ScriptReportSink = ServiceManager.getService(project, ScriptReportSink::class.java)
 
-    protected fun processRefinedConfiguration(result: ResultWithDiagnostics<RefinementResults>, file: VirtualFile) {
+    protected fun processRefinedConfiguration(result: ResultWithDiagnostics<ScriptCompilationConfigurationWrapper>, file: VirtualFile) {
         debug(file) { "refined script compilation configuration from ${this.javaClass} received = $result" }
 
-        val refinementResult = result.resultOrNull()
+        val compilationConfiguration = result.resultOrNull()
 
-        val oldResult = cache.getRefinementResults(file)
+        val oldResult = cache[file]
 
         if (oldResult == null) {
-            refinementResult?.let {
-                saveRefinementResults(it, file)
+            compilationConfiguration?.let {
+                save(it, file)
                 attachReportsIfChanged(result, file)
             }
             return
         }
 
-        if (oldResult != refinementResult) {
+        if (oldResult != compilationConfiguration) {
             if (shouldShowNotification() && !ApplicationManager.getApplication().isUnitTestMode) {
                 debug(file) {
-                    "dependencies changed, notification is shown: old = $oldResult, new = $refinementResult"
+                    "dependencies changed, notification is shown: old = $oldResult, new = $compilationConfiguration"
                 }
-                file.addScriptDependenciesNotificationPanel(refinementResult, project) {
-                    saveRefinementResults(it, file)
+                file.addScriptDependenciesNotificationPanel(compilationConfiguration, project) {
+                    save(it, file)
                     attachReportsIfChanged(result, file)
                     submitMakeRootsChange()
                 }
             } else {
                 debug(file) {
-                    "dependencies changed, new dependencies are applied automatically: old = $oldResult, new = $refinementResult"
+                    "dependencies changed, new dependencies are applied automatically: old = $oldResult, new = $compilationConfiguration"
                 }
-                saveRefinementResults(refinementResult, file)
+                save(compilationConfiguration, file)
                 attachReportsIfChanged(result, file)
             }
         } else {
@@ -82,25 +82,27 @@ abstract class ScriptDependenciesLoader(protected val project: Project) {
         }
     }
 
-    private fun saveRefinementResults(refinementResult: RefinementResults?, file: VirtualFile) {
+    private fun save(compilationConfiguration: ScriptCompilationConfigurationWrapper?, file: VirtualFile) {
         if (shouldShowNotification()) {
             file.removeScriptDependenciesNotificationPanel(project)
         }
-        if (refinementResult != null) {
-            saveToCache(file, refinementResult)
+        if (compilationConfiguration != null) {
+            saveToCache(file, compilationConfiguration)
         }
     }
 
-    protected fun saveToCache(file: VirtualFile, refinementResults: RefinementResults, skipSaveToAttributes: Boolean = false) {
-        val rootsChanged = cache.hasNotCachedRoots(refinementResults)
-        if (cache.save(file, refinementResults) && !skipSaveToAttributes) {
+    protected fun saveToCache(
+        file: VirtualFile, compilationConfiguration: ScriptCompilationConfigurationWrapper, skipSaveToAttributes: Boolean = false
+    ) {
+        val rootsChanged = cache.hasNotCachedRoots(compilationConfiguration)
+        if (cache.save(file, compilationConfiguration) && !skipSaveToAttributes) {
             debug(file) {
-                "refined configuration is saved to file attributes: $refinementResults"
+                "refined configuration is saved to file attributes: $compilationConfiguration"
             }
-            if (refinementResults is RefinementResults.FromLegacy)
-                file.scriptDependencies = refinementResults.scriptDependencies
+            if (compilationConfiguration is ScriptCompilationConfigurationWrapper.FromLegacy)
+                file.scriptDependencies = compilationConfiguration.legacyDependencies
             else
-                file.scriptCompilationConfiguration = refinementResults.compilationConfiguration
+                file.scriptCompilationConfiguration = compilationConfiguration.configuration
         }
 
         if (rootsChanged) {

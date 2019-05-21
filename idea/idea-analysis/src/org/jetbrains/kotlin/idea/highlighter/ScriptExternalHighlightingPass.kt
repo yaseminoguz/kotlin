@@ -39,7 +39,7 @@ import com.intellij.util.ui.UIUtil
 import org.jetbrains.kotlin.idea.core.script.IdeScriptReportSink
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionsManager
 import org.jetbrains.kotlin.idea.core.script.ScriptDependenciesManager
-import org.jetbrains.kotlin.idea.core.script.ScriptDependenciesUpdater
+import org.jetbrains.kotlin.idea.core.script.ScriptsCompilationConfigurationUpdater
 import org.jetbrains.kotlin.psi.KtFile
 import kotlin.script.experimental.dependencies.ScriptReport
 
@@ -61,8 +61,8 @@ class ScriptExternalHighlightingPass(
             )
         }
 
-        if (!ScriptDependenciesUpdater.areDependenciesCached(file)) {
-            val scriptRefinementResults = ScriptDependenciesManager.getInstance(file.project).getScriptRefinementResults(file.virtualFile)
+        if (!ScriptsCompilationConfigurationUpdater.areDependenciesCached(file)) {
+            val scriptRefinementResults = ScriptDependenciesManager.getInstance(file.project).getRefinedCompilationConfiguration(file.virtualFile)
             if (scriptRefinementResults == null) {
                 showNotification(
                     file,

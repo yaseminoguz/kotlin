@@ -18,8 +18,8 @@ class OutsiderFileDependenciesLoader(project: Project) : ScriptDependenciesLoade
 
     override fun loadDependencies(file: VirtualFile) {
         val fileOrigin = OutsidersPsiFileSupportUtils.getOutsiderFileOrigin(project, file) ?: return
-        val refinementResults = ScriptDependenciesManager.getInstance(project).getScriptRefinementResults(fileOrigin) ?: return
-        saveToCache(file, refinementResults)
+        val compilationConfiguration = ScriptDependenciesManager.getInstance(project).getRefinedCompilationConfiguration(fileOrigin) ?: return
+        saveToCache(file, compilationConfiguration)
     }
 
     override fun shouldShowNotification(): Boolean = false

@@ -44,14 +44,12 @@ import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
 import org.jetbrains.kotlin.scripting.resolve.LegacyResolverWrapper
-import org.jetbrains.kotlin.scripting.resolve.RefinementResults
+import org.jetbrains.kotlin.scripting.resolve.ScriptCompilationConfigurationWrapper
 import kotlin.script.experimental.dependencies.AsyncDependenciesResolver
-import kotlin.script.experimental.dependencies.ScriptDependencies
 
-// TODO: rename and provide alias for compatibility - this is not only about dependencies anymore
-class ScriptDependenciesUpdater(
+class ScriptsCompilationConfigurationUpdater(
     private val project: Project,
-    private val cache: ScriptDependenciesCache
+    private val cache: ScriptsCompilationConfigurationCache
 ) {
     private val scriptsQueue = Alarm(Alarm.ThreadToUse.SWING_THREAD, project)
     private val scriptChangesListenerDelay = 1400
@@ -67,25 +65,14 @@ class ScriptDependenciesUpdater(
         listenForChangesInScripts()
     }
 
-    @Deprecated("Migrating to configuration refinement")
-    fun getCurrentDependencies(file: VirtualFile): ScriptDependencies {
+    fun getCurrentCompilationConfiguration(file: VirtualFile): ScriptCompilationConfigurationWrapper? {
         cache[file]?.let { return it }
 
         updateDependencies(file)
         makeRootsChangeIfNeeded()
 
-        return cache[file] ?: ScriptDependencies.Empty
+        return cache[file]
     }
-
-    fun getCurrentRefinementResults(file: VirtualFile): RefinementResults? {
-        cache.getRefinementResults(file)?.let { return it }
-
-        updateDependencies(file)
-        makeRootsChangeIfNeeded()
-
-        return cache.getRefinementResults(file)
-    }
-
 
     fun updateDependenciesIfNeeded(files: List<VirtualFile>): Boolean {
         if (!ScriptDefinitionsManager.getInstance(project).isReady()) return false
@@ -195,8 +182,8 @@ class ScriptDependenciesUpdater(
 
     companion object {
         @JvmStatic
-        fun getInstance(project: Project): ScriptDependenciesUpdater =
-            ServiceManager.getService(project, ScriptDependenciesUpdater::class.java)
+        fun getInstance(project: Project): ScriptsCompilationConfigurationUpdater =
+            ServiceManager.getService(project, ScriptsCompilationConfigurationUpdater::class.java)
 
         fun areDependenciesCached(file: KtFile): Boolean {
             return getInstance(file.project).areDependenciesCached(file.virtualFile)

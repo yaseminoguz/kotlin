@@ -11,7 +11,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.scripting.definitions.ScriptDependenciesProvider
 import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
-import org.jetbrains.kotlin.scripting.resolve.RefinementResults
+import org.jetbrains.kotlin.scripting.resolve.ScriptCompilationConfigurationWrapper
 import org.jetbrains.kotlin.scripting.resolve.ScriptReportSink
 import org.jetbrains.kotlin.scripting.resolve.VirtualFileScriptSource
 import org.jetbrains.kotlin.scripting.resolve.refineScriptCompilationConfiguration
@@ -24,13 +24,13 @@ import kotlin.script.experimental.jvm.compat.mapToLegacyReports
 
 class CliScriptDependenciesProvider(private val project: Project) : ScriptDependenciesProvider {
     private val cacheLock = ReentrantReadWriteLock()
-    private val cache = hashMapOf<String, RefinementResults?>()
+    private val cache = hashMapOf<String, ScriptCompilationConfigurationWrapper?>()
 
-    override fun getRefinementResults(file: VirtualFile): RefinementResults? = cacheLock.read {
-        calculateRefinementResults(file)
+    override fun getScriptRefinedCompilationConfiguration(file: VirtualFile): ScriptCompilationConfigurationWrapper? = cacheLock.read {
+        calculateRefinedConfiguration(file)
     }
 
-    private fun calculateRefinementResults(file: VirtualFile): RefinementResults? {
+    private fun calculateRefinedConfiguration(file: VirtualFile): ScriptCompilationConfigurationWrapper? {
         val path = file.path
         val cached = cache[path]
         return if (cached != null) cached
@@ -41,7 +41,7 @@ class CliScriptDependenciesProvider(private val project: Project) : ScriptDepend
 
                 ServiceManager.getService(project, ScriptReportSink::class.java)?.attachReports(file, result.reports.mapToLegacyReports())
 
-                if (result is ResultWithDiagnostics.Success<RefinementResults>) {
+                if (result is ResultWithDiagnostics.Success<ScriptCompilationConfigurationWrapper>) {
                     log.info("[kts] new cached deps for $path: ${result.value.dependenciesClassPath.joinToString(File.pathSeparator)}")
                     cacheLock.write {
                         cache.put(path, result.value)

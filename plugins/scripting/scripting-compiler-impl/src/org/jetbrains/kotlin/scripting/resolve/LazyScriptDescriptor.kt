@@ -168,7 +168,7 @@ class LazyScriptDescriptor(
         val res = ArrayList<ClassDescriptor>()
 
         val importedScriptsFiles = ScriptDependenciesProvider.getInstance(scriptInfo.script.project)
-            ?.getScriptDependencies(scriptInfo.script.containingKtFile)?.scripts
+            ?.getScriptRefinedCompilationConfiguration(scriptInfo.script.containingKtFile)?.importedScripts
         if (importedScriptsFiles != null) {
             val findImportedScriptDescriptor = ImportedScriptDescriptorsFinder()
             importedScriptsFiles.mapNotNullTo(res) {

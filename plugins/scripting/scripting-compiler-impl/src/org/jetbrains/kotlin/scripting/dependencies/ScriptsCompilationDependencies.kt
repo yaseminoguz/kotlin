@@ -41,11 +41,11 @@ fun collectScriptsCompilationDependencies(
         while (true) {
             val newRemainingSources = ArrayList<KtFile>()
             for (source in remainingSources) {
-                val dependencies = importsProvider.getScriptDependencies(source)
-                if (dependencies != null) {
-                    collectedClassPath.addAll(dependencies.classpath)
+                val refinedConfiguration = importsProvider.getScriptRefinedCompilationConfiguration(source)
+                if (refinedConfiguration != null) {
+                    collectedClassPath.addAll(refinedConfiguration.dependenciesClassPath)
 
-                    val sourceDependenciesRoots = dependencies.scripts.map {
+                    val sourceDependenciesRoots = refinedConfiguration.importedScripts.map {
                         KotlinSourceRoot(it.path, false)
                     }
                     val sourceDependencies =
