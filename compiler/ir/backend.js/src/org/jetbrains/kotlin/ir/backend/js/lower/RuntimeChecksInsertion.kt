@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
-import org.jetbrains.kotlin.name.FqName
 
 class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass {
     var count: Int = 0
@@ -50,11 +49,6 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
                 if (expression is IrCall) {
                     val function: IrFunction = expression.symbol.owner
                     val fqName = function.fqNameWhenAvailable
-
-                    // String literal of 'js' function cannot be separated
-                    if (fqName == FqName("kotlin.js.js")) {
-                        return expression
-                    }
                 }
 
                 val newExpression = super.visitExpression(expression)
@@ -70,17 +64,12 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
         val typeSymbol = type.classifierOrNull ?: return expression
 
         val typeClass = typeSymbol.owner as? IrClass ?: return expression
-
-        if (typeClass.name.asString().startsWith("KMutableProperty"))
-            return expression
-
-        if (typeClass.name.asString().startsWith("KProperty"))
-            return expression
-
-        if (typeClass.name.asString().startsWith("SuspendFunction"))
-            return expression
-
-        if (typeClass.name.asString().startsWith("KSuspendFunction"))
+        val typeName = typeClass.name.asString()
+        if (typeName.startsWith("KMutableProperty") ||
+            typeName.startsWith("KProperty") ||
+            typeName.startsWith("SuspendFunction") ||
+            typeName.startsWith("KSuspendFunction")
+        )
             return expression
 
         if (type.isNothing())
@@ -95,11 +84,18 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
         if (expression is IrDynamicExpression)
             return expression
 
-        // Enum constructor calls pretend to return Unit.
+        // These are not really expressions. They can't be used in any context.
         if (expression is IrEnumConstructorCall ||
             expression is IrDelegatingConstructorCall ||
             expression is IrInstanceInitializerCall
         )
+            return expression
+
+        // Some intrinsics rely on arguments being string constants:
+        //    - kotlin.js.js
+        //    - jsGetJSField
+        //    - jsSetJSField
+        if (expression is IrConst<*> && expression.kind == IrConstKind.String)
             return expression
 
         // For primitive companions
