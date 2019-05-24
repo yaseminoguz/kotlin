@@ -1,7 +1,7 @@
 // EXPECTED_REACHABLE_NODES: 1280
 
-// IGNORE_BACKEND: JS_IR
-// Bad unsafeCast
+// Wrong unsafeCast
+@file:SkipRuntimeTypeChecks
 
 package foo
 

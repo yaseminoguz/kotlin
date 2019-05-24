@@ -2,8 +2,8 @@
 // LANGUAGE_VERSION: 1.2
 // WITH_RUNTIME
 
-// Unsafe dynamic operations
-// IGNORE_BACKEND: JS_IR
+// Bad dynamic operations
+@file:SkipRuntimeTypeChecks
 
 fun deinitialize(foo: dynamic) {
   foo.bar = null

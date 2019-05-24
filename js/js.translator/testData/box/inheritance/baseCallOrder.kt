@@ -1,6 +1,7 @@
 // EXPECTED_REACHABLE_NODES: 1290
-// IGNORE_BACKEND: JS_IR
-// `a` was not initialized at this point
+
+// Access of uninitialized property 'a'
+@file:SkipRuntimeTypeChecks
 
 package foo
 

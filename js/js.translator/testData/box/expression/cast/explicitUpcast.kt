@@ -2,8 +2,8 @@
 // SKIP_MINIFICATION
 // This test assumes that external JS code calls Kotlin code directly
 
-// IGNORE_BACKEND: JS_IR
 // Wrong object
+@file:SkipRuntimeTypeChecks
 
 open class A
 

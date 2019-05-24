@@ -1,8 +1,8 @@
 // EXPECTED_REACHABLE_NODES: 1287
 // KJS_WITH_FULL_RUNTIME
 
-// IGNORE_BACKEND: JS_IR
-// ILLEGAL CODE
+// Illegal cast
+@file:SkipRuntimeTypeChecks
 
 package foo
 
