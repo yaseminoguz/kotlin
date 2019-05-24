@@ -21,38 +21,31 @@ import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass {
     var count: Int = 0
 
-    override fun lower(irFile: IrFile) {
-        if (irFile.name.contains("typeCheckUtils.kt"))
-            return
+    fun IrAnnotationContainer.prohibitsRuntimeTypeChecks(): Boolean =
+        when {
+            hasAnnotation(context.intrinsics.doNotIntrinsifyAnnotationSymbol) -> true
+            hasAnnotation(context.intrinsics.skipRuntimeTypeChecksAnnotationSymbol) -> true
+            else -> false
+        }
 
-        if (irFile.name.contains("coroutineInternalJS.kt"))
-            return
+    override fun lower(irFile: IrFile) {
+        if (irFile.prohibitsRuntimeTypeChecks()) return
 
         irFile.transformChildrenVoid(object : IrElementTransformerVoid() {
-            override fun visitFunction(declaration: IrFunction): IrStatement {
-                val parent = declaration.parent
-                if (declaration.hasAnnotation(context.intrinsics.doNotIntrinsifyAnnotationSymbol))
+            override fun visitDeclaration(declaration: IrDeclaration): IrStatement {
+                if (declaration.prohibitsRuntimeTypeChecks())
                     return declaration
-                if (declaration.symbol == context.intrinsics.typeCheckIntrinsic)
-                    return declaration
-                if (declaration is IrConstructor && parent is IrClass && parent.isInline)
-                    return declaration
+                return super.visitDeclaration(declaration)
+            }
 
+            override fun visitConstructor(declaration: IrConstructor): IrStatement {
+                if (declaration.parentAsClass.isInline)
+                    return declaration
                 return super.visitFunction(declaration)
             }
 
             override fun visitExpression(expression: IrExpression): IrExpression {
-                // Null constants used in EQEQ functions can change its semantics
-                if (expression.isNullConst())
-                    return expression
-
-                if (expression is IrCall) {
-                    val function: IrFunction = expression.symbol.owner
-                    val fqName = function.fqNameWhenAvailable
-                }
-
-                val newExpression = super.visitExpression(expression)
-                return insertRuntimeChecks(newExpression)
+                return insertRuntimeChecks(super.visitExpression(expression))
             }
         })
 
@@ -96,6 +89,10 @@ class RuntimeChecksInsertion(val context: JsIrBackendContext) : FileLoweringPass
         //    - jsGetJSField
         //    - jsSetJSField
         if (expression is IrConst<*> && expression.kind == IrConstKind.String)
+            return expression
+
+        // Null constants used in EQEQ functions can change its semantics
+        if (expression.isNullConst())
             return expression
 
         // For primitive companions

@@ -13,9 +13,9 @@ internal fun <T : Enum<T>> enumValuesIntrinsic(): Array<T> =
 internal fun <T : Enum<T>> enumValueOfIntrinsic(name: String): T =
     throw IllegalStateException("Should be replaced by compiler")
 
-
+@SkipRuntimeTypeChecks
 internal fun typeCheck(x: Boolean) {
     if (!x) {
-        js("\$type_check_failed\$()")
+        THROW_CCE()
     }
 }
