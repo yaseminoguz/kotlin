@@ -30,7 +30,7 @@ internal annotation class library(public val name: String = "")
 internal annotation class marker
 
 @Target(CLASS, PROPERTY, FUNCTION, FILE)
-public annotation class SkipRuntimeTypeChecks
+internal annotation class SkipRuntimeTypeChecks
 
 /**
  * Gives a declaration (a function, a property or a class) specific name in JavaScript.
