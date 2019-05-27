@@ -86,6 +86,12 @@ private val moveBodilessDeclarationsToSeparatePlacePhase = makeCustomJsModulePha
     description = "Move `external` and `built-in` declarations into separate place to make the following lowerings do not care about them"
 )
 
+private val insertRuntimeTypeChecks = makeJsModulePhase(
+    ::RuntimeChecksInsertion,
+    name = "InsertRuntimeTypeChecks",
+    description = "Insert runtime type checks for each expression"
+)
+
 private val expectDeclarationsRemovingPhase = makeJsModulePhase(
     ::ExpectDeclarationsRemoving,
     name = "ExpectDeclarationsRemoving",
@@ -380,6 +386,7 @@ val jsPhases = namedIrModulePhase(
             moveBodilessDeclarationsToSeparatePlacePhase then
             enumClassLoweringPhase then
             enumUsageLoweringPhase then
+            insertRuntimeTypeChecks then
             suspendFunctionsLoweringPhase then
             returnableBlockLoweringPhase then
             privateMembersLoweringPhase then
