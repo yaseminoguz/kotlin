@@ -83,6 +83,7 @@ class StringJVMTest {
 
         // Case mapping where title case is different than uppercase and so Character.toTitleCase is preferred.
         assertEquals("ǲǳǳ", "ǳǳǳ".capitalize(Locale.US))
+        assertEquals("ǱǱǱ", "ǱǱǱ".capitalize(Locale.US))
     }
 
     @ExperimentalStdlibApi
