@@ -84,16 +84,8 @@ private fun checkExpressionArgument(
     val position = if (isReceiver) ReceiverConstraintPosition(expressionArgument) else ArgumentConstraintPosition(expressionArgument)
 
     // Used only for arguments with @NotNull annotation
-    if (expectedType is NotNullTypeVariable) {
-        var expectedTypeIsNull: Boolean = false
-        csBuilder.runTransaction {
-            addNotNullUpperConstraint(argumentType, position)
-            expectedTypeIsNull = hasContradiction
-            false
-        }
-        if (expectedTypeIsNull) {
-            diagnosticsHolder.addDiagnostic(ArgumentTypeMismatchDiagnostic(expectedType, argumentType, expressionArgument))
-        }
+    if (expectedType is NotNullTypeVariable && argumentType.isMarkedNullable) {
+        diagnosticsHolder.addDiagnostic(ArgumentTypeMismatchDiagnostic(expectedType, argumentType, expressionArgument))
     }
 
     if (expressionArgument.isSafeCall) {
