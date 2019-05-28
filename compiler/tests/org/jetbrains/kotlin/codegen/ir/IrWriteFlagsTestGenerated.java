@@ -1155,6 +1155,11 @@ public class IrWriteFlagsTestGenerated extends AbstractIrWriteFlagsTest {
             public void testPublicProperty() throws Exception {
                 runTest("compiler/testData/writeFlags/property/syntheticAnnotationsMethod/publicProperty.kt");
             }
+
+            @TestMetadata("withGetterJvmName.kt")
+            public void testWithGetterJvmName() throws Exception {
+                runTest("compiler/testData/writeFlags/property/syntheticAnnotationsMethod/withGetterJvmName.kt");
+            }
         }
 
         @TestMetadata("compiler/testData/writeFlags/property/visibility")
