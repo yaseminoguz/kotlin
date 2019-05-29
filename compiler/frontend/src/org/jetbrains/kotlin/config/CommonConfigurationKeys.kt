@@ -44,6 +44,9 @@ object CommonConfigurationKeys {
 
     @JvmField
     val USE_FIR = CompilerConfigurationKey.create<Boolean>("front-end IR")
+
+    @JvmField
+    val DUMP_MODEL = CompilerConfigurationKey.create<String>("Dump compiler arguments")
 }
 
 var CompilerConfiguration.languageVersionSettings: LanguageVersionSettings
