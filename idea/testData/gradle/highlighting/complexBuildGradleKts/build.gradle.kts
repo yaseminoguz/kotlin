@@ -113,6 +113,7 @@ extra["compilerModules"] = arrayOf(
     ":compiler:resolution",
     ":compiler:serialization",
     ":compiler:psi",
+    ":compiler:javac-wrapper",
     ":compiler:fir:cones",
     ":compiler:fir:resolve",
     ":compiler:fir:tree",

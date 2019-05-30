@@ -36,6 +36,7 @@ val projectsToShadow by extra(listOf(
         ":idea:idea-j2k",
         ":idea:formatter",
         ":compiler:psi",
+        ":compiler:javac-wrapper",
         ":compiler:fir:cones",
         ":compiler:fir:resolve",
         ":compiler:fir:tree",

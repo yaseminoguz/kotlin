@@ -24,6 +24,7 @@ dependencies {
     compile(project(":compiler:fir:resolve"))
     compile(project(":compiler:fir:java"))
     compile(project(":compiler:fir:fir2ir"))
+    compile(project(":compiler:javac-wrapper"))
     compile(files("${System.getProperty("java.home")}/../lib/tools.jar"))
     compileOnly(intellijCoreDep()) { includeJars("intellij-core") }
     compileOnly(intellijDep()) { includeIntellijCoreJarDependencies(project) }
@@ -37,8 +38,7 @@ dependencies {
 sourceSets {
     "main" {
         projectDefault()
-        java.srcDirs("../builtins-serializer/src",
-                     "../javac-wrapper/src")
+        java.srcDirs("../builtins-serializer/src")
     }
     "test" { }
 }
