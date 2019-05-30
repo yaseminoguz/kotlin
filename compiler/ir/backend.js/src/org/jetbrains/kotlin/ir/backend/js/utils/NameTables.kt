@@ -86,12 +86,8 @@ fun fieldSignature(field: IrField): Signature {
 }
 
 fun functionSignature(declaration: IrFunction): Signature {
-    require(!declaration.isStaticMethodOfClass) {
-        "zzz"
-    }
-    require(declaration.dispatchReceiverParameter != null) {
-        "dr"
-    }
+    require(!declaration.isStaticMethodOfClass)
+    require(declaration.dispatchReceiverParameter != null)
 
     val declarationName = declaration.getJsNameOrKotlinName().asString()
 
@@ -163,8 +159,10 @@ class NameTables(packages: List<IrPackageFragment>) {
 
         for (p in packages) {
             for (declaration in p.declarations) {
-                if (declaration is IrClass)
-                    if (declaration.isEffectivelyExternal())
+                val localNameGenerator = LocalNameGenerator(declaration)
+
+                if (declaration is IrClass) {
+                    if (declaration.isEffectivelyExternal()) {
                         declaration.acceptChildrenVoid(object : IrElementVisitorVoid {
                             override fun visitElement(element: IrElement) {
                                 element.acceptChildrenVoid(this)
@@ -184,18 +182,16 @@ class NameTables(packages: List<IrPackageFragment>) {
                                 }
                             }
                         })
-
-                val localNameGenerator = LocalNameGenerator(declaration)
-
-                if (declaration is IrClass) {
-                    declaration.thisReceiver!!.acceptVoid(localNameGenerator)
-                    for (memberDecl in declaration.declarations) {
-                        memberDecl.acceptChildrenVoid(LocalNameGenerator(memberDecl))
-                        when (memberDecl) {
-                            is IrSimpleFunction ->
-                                generateNameForMemberFunction(memberDecl)
-                            is IrField ->
-                                generateNameForMemberField(memberDecl)
+                    } else {
+                        declaration.thisReceiver!!.acceptVoid(localNameGenerator)
+                        for (memberDecl in declaration.declarations) {
+                            memberDecl.acceptChildrenVoid(LocalNameGenerator(memberDecl))
+                            when (memberDecl) {
+                                is IrSimpleFunction ->
+                                    generateNameForMemberFunction(memberDecl)
+                                is IrField ->
+                                    generateNameForMemberField(memberDecl)
+                            }
                         }
                     }
                 } else {
