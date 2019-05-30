@@ -140,7 +140,8 @@ fun functionSignature(declaration: IrFunction): Signature {
 
 class NameTables(packages: List<IrPackageFragment>) {
     private val globalNames: NameTable<IrDeclaration>
-    private val memberNames: NameTable<Signature>
+    private val memberFunctionNames: NameTable<Signature>
+    private val memberFieldNames: NameTable<IrField>
     private val localNames = mutableMapOf<IrDeclaration, NameTable<IrDeclaration>>()
     private val loopNames = mutableMapOf<IrLoop, String>()
 
@@ -149,7 +150,8 @@ class NameTables(packages: List<IrPackageFragment>) {
         packages.forEach { it.acceptChildrenVoid(stableNamesCollector) }
 
         globalNames = NameTable(reserved = stableNamesCollector.staticNames)
-        memberNames = NameTable(reserved = stableNamesCollector.memberNames)
+        memberFunctionNames = NameTable(reserved = stableNamesCollector.memberNames)
+        memberFieldNames = NameTable(reserved = stableNamesCollector.memberNames)
 
         for (p in packages) {
             for (declaration in p.declarations) {
@@ -207,12 +209,20 @@ class NameTables(packages: List<IrPackageFragment>) {
         require(!field.isTopLevel)
         require(!field.isStatic)
         val signature = fieldSignature(field)
-        memberNames.declareStableName(signature, signature)
+
+        if (field.isEffectivelyExternal()) {
+            memberFieldNames.declareStableName(field, field.name.identifier)
+        }
+
+        val parentName = (field.parent as IrDeclarationWithName).name.asString()
+        val name = "${field.name.asString()}_$parentName"
+
+        memberFieldNames.declareFreshName(field, sanitizeName(name))
     }
 
     private fun generateNameForMemberFunction(declaration: IrSimpleFunction) {
         val signature = functionSignature(declaration)
-        memberNames.declareStableName(signature, signature)
+        memberFunctionNames.declareStableName(signature, signature)
     }
 
     @Suppress("unused")
@@ -250,9 +260,7 @@ class NameTables(packages: List<IrPackageFragment>) {
     }
 
     fun getNameForMemberField(field: IrField): String {
-        val signature = fieldSignature(field)
-        return signature
-        val name = memberNames.names[fieldSignature(field)]
+        val name = memberFieldNames.names[field]
         require(name != null) {
             "Can't find name for member field $field"
         }
@@ -261,8 +269,7 @@ class NameTables(packages: List<IrPackageFragment>) {
 
     fun getNameForMemberFunction(function: IrSimpleFunction): String {
         val signature = functionSignature(function)
-        return signature
-        val name = memberNames.names[signature]
+        val name = memberFunctionNames.names[signature]
         if (name == null && signature.startsWith("invoke")) return signature
         require(name != null) {
             "Can't find name for member function $function"
