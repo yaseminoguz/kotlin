@@ -61,12 +61,12 @@ abstract class AbstractBlackBoxCodegenTestSpec : AbstractBlackBoxCodegenTest() {
 
         includeHelpers(wholeFile, files, specTest)
 
+        val runTest = { super.doMultiFileTest(wholeFile, files, javaFilesDir, specTest.unexpectedBehavior) }
+
         if (specTest.exception == null) {
-            super.doMultiFileTest(wholeFile, files, javaFilesDir)
+            runTest()
         } else {
-            TestExceptionsComparator(wholeFile).run(specTest.exception) {
-                super.doMultiFileTest(wholeFile, files, javaFilesDir)
-            }
+            TestExceptionsComparator(wholeFile).run(specTest.exception, runTest)
         }
     }
 }

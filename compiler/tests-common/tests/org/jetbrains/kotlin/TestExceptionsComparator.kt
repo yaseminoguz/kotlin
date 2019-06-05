@@ -98,10 +98,13 @@ class TestExceptionsComparator(wholeFile: File) {
         }
     }
 
+    fun run(expectedException: TestsExceptionType?, runnable: () -> Unit) =
+        run(expectedException, mapOf(), null, runnable)
+
     fun run(
         expectedException: TestsExceptionType?,
-        exceptionByCases: Map<Int, TestsExceptionType?> = mapOf(),
-        computeExceptionPoint: ((Matcher?) -> Set<Int>?)? = null,
+        exceptionByCases: Map<Int, TestsExceptionType?>,
+        computeExceptionPoint: ((Matcher?) -> Set<Int>?)?,
         runnable: () -> Unit
     ) {
         try {

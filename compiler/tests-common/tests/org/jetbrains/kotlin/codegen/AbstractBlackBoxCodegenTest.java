@@ -31,18 +31,18 @@ public abstract class AbstractBlackBoxCodegenTest extends CodegenTestCase {
     private static final boolean IGNORE_EXPECTED_FAILURES =
             Boolean.getBoolean("kotlin.suppress.expected.test.failures");
 
-    @Override
     protected void doMultiFileTest(
         @NotNull File wholeFile,
         @NotNull List<TestFile> files,
-        @Nullable File javaFilesDir
+        @Nullable File javaFilesDir,
+        boolean unexpectedBehaviour
     ) throws Exception {
         boolean isIgnored = IGNORE_EXPECTED_FAILURES && InTextDirectivesUtils.isIgnoredTarget(getBackend(), wholeFile);
 
         compile(files, javaFilesDir, !isIgnored);
 
         try {
-            blackBox(!isIgnored);
+            blackBox(!isIgnored, unexpectedBehaviour);
         }
         catch (Throwable t) {
             if (!isIgnored) {
@@ -58,6 +58,15 @@ public abstract class AbstractBlackBoxCodegenTest extends CodegenTestCase {
         }
 
         doBytecodeListingTest(wholeFile);
+    }
+
+    @Override
+    protected void doMultiFileTest(
+        @NotNull File wholeFile,
+        @NotNull List<TestFile> files,
+        @Nullable File javaFilesDir
+    ) throws Exception {
+        doMultiFileTest(wholeFile, files, javaFilesDir, false);
     }
 
     private void doBytecodeListingTest(@NotNull File wholeFile) throws Exception {
@@ -98,7 +107,7 @@ public abstract class AbstractBlackBoxCodegenTest extends CodegenTestCase {
         assertEqualsToFile(expectedFile, text, s -> s.replace("COROUTINES_PACKAGE", coroutinesPackage));
     }
 
-    protected void blackBox(boolean reportProblems) {
+    protected void blackBox(boolean reportProblems, boolean unexpectedBehaviour) {
         // If there are many files, the first 'box(): String' function will be executed.
         GeneratedClassLoader generatedClassLoader = generateAndCreateClassLoader(reportProblems);
         for (KtFile firstFile : myFiles.getPsiFiles()) {
@@ -108,7 +117,7 @@ public abstract class AbstractBlackBoxCodegenTest extends CodegenTestCase {
             try {
                 Method method = getBoxMethodOrNull(aClass);
                 if (method != null) {
-                    callBoxMethodAndCheckResult(generatedClassLoader, aClass, method);
+                    callBoxMethodAndCheckResult(generatedClassLoader, aClass, method, unexpectedBehaviour);
                     return;
                 }
             }
@@ -123,6 +132,10 @@ public abstract class AbstractBlackBoxCodegenTest extends CodegenTestCase {
             }
         }
         fail("Can't find box method!");
+    }
+
+    protected void blackBox(boolean reportProblems) {
+        blackBox(reportProblems, false);
     }
 
     @Nullable

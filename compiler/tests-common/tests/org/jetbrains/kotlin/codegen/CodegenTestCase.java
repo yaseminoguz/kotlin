@@ -846,11 +846,20 @@ public abstract class CodegenTestCase extends KtUsefulTestCase {
             throws IOException, InvocationTargetException, IllegalAccessException {
         Class<?> aClass = getGeneratedClass(classLoader, className);
         Method method = getBoxMethodOrNull(aClass);
-        assertTrue("Can't find box method in " + aClass,method != null);
+        assertNotNull("Can't find box method in " + aClass,method);
         callBoxMethodAndCheckResult(classLoader, aClass, method);
     }
 
-    protected void callBoxMethodAndCheckResult(URLClassLoader classLoader, Class<?> aClass, Method method)
+    private void callBoxMethodAndCheckResult(URLClassLoader classLoader, Class<?> aClass, Method method)
+            throws IOException, IllegalAccessException, InvocationTargetException {
+        callBoxMethodAndCheckResult(classLoader, aClass, method, false);
+    }
+
+    protected void callBoxMethodAndCheckResult(
+            URLClassLoader classLoader,
+            Class<?> aClass, Method method,
+            boolean unexpectedBehaviour
+    )
             throws IOException, IllegalAccessException, InvocationTargetException {
         String result;
         if (boxInSeparateProcessPort != null) {
@@ -871,7 +880,11 @@ public abstract class CodegenTestCase extends KtUsefulTestCase {
                 }
             }
         }
-        assertEquals("OK", result);
+        if (unexpectedBehaviour) {
+            assertNotSame("OK", result);
+        } else {
+            assertEquals("OK", result);
+        }
     }
 
     @NotNull
