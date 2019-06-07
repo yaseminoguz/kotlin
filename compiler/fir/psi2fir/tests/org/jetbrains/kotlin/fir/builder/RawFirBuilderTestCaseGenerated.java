@@ -269,6 +269,11 @@ public class RawFirBuilderTestCaseGenerated extends AbstractRawFirBuilderTestCas
             runTest("compiler/fir/psi2fir/testData/rawBuilder/expressions/typeOperators.kt");
         }
 
+        @TestMetadata("typeRefConsistency.kt")
+        public void testTypeRefConsistency() throws Exception {
+            runTest("compiler/fir/psi2fir/testData/rawBuilder/expressions/typeRefConsistency.kt");
+        }
+
         @TestMetadata("unary.kt")
         public void testUnary() throws Exception {
             runTest("compiler/fir/psi2fir/testData/rawBuilder/expressions/unary.kt");

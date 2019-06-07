@@ -1,0 +1,24 @@
+FILE: typeRefConsistency.kt
+    public? final? class A : kotlin/Any {
+        public? constructor(): R|f/A| {
+            super<kotlin/Any>()
+        }
+
+        public? final? companion object Companion : kotlin/Any {
+            private constructor(): R|f/A.Companion| {
+                super<kotlin/Any>()
+            }
+
+            public? final? class B : kotlin/Any {
+                public? constructor(): R|f/A.Companion.B| {
+                    super<kotlin/Any>()
+                }
+
+            }
+
+        }
+
+    }
+    public? final? fun test(): <implicit> {
+        ^test B#()
+    }
