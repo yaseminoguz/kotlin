@@ -115,7 +115,7 @@ class Fir2IrDeclarationStorage(
         fun create(): IrClass {
             val descriptor = WrappedClassDescriptor()
             val origin = IrDeclarationOrigin.DEFINED
-            val modality = regularClass.modality!!
+            val modality = regularClass.modality ?: Modality.FINAL
             return regularClass.convertWithOffsets { startOffset, endOffset ->
                 irSymbolTable.declareClass(startOffset, endOffset, origin, descriptor, modality) { symbol ->
                     IrClassImpl(
@@ -308,7 +308,7 @@ class Fir2IrDeclarationStorage(
                 irSymbolTable.declareSimpleFunction(startOffset, endOffset, origin, descriptor) { symbol ->
                     IrFunctionImpl(
                         startOffset, endOffset, origin, symbol,
-                        function.name, function.visibility, function.modality!!,
+                        function.name, function.visibility, function.modality ?: Modality.FINAL,
                         function.returnTypeRef.toIrType(session, this),
                         function.isInline, function.isExternal,
                         function.isTailRec, function.isSuspend
@@ -391,7 +391,7 @@ class Fir2IrDeclarationStorage(
                 ) { symbol ->
                     IrPropertyImpl(
                         startOffset, endOffset, origin, symbol,
-                        property.name, property.visibility, property.modality!!,
+                        property.name, property.visibility, property.modality ?: Modality.FINAL,
                         property.isVar, property.isConst, property.isLateInit,
                         property.delegate != null,
                         // TODO

@@ -5,11 +5,11 @@ FILE: localImplicitBodies.kt
                 super<R|kotlin/Any|>()
             }
 
-            public final fun sss(): <ERROR TYPE REF: Unresolved name: abc> {
+            public? final? fun sss(): <ERROR TYPE REF: Unresolved name: abc> {
                 ^sss <Unresolved name: abc>#()
             }
 
-            public final fun abc(): R|kotlin/Int| {
+            public? final? fun abc(): R|kotlin/Int| {
                 ^abc Int(1)
             }
 
