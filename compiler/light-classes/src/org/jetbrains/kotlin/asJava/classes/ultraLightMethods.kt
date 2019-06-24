@@ -26,7 +26,7 @@ import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOriginKind
 import org.jetbrains.kotlin.types.KotlinType
 
 internal abstract class KtUltraLightMethod(
-    internal val delegate: LightMethodBuilder,
+    internal val delegate: PsiMethod,
     closestDeclarationForOrigin: KtDeclaration?,
     protected val support: KtUltraLightSupport,
     containingClass: KtLightClass
@@ -102,7 +102,7 @@ internal abstract class KtUltraLightMethod(
 }
 
 internal class KtUltraLightMethodForSourceDeclaration(
-    delegate: LightMethodBuilder,
+    delegate: PsiMethod,
     declaration: KtDeclaration,
     support: KtUltraLightSupport,
     containingClass: KtLightClass
