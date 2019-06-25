@@ -69,7 +69,7 @@ open class TransformKotlinGranularMetadata
             project,
             kotlinSourceSet,
             listOf(API_SCOPE, IMPLEMENTATION_SCOPE),
-            listOf(project.configurations.getByName(ALL_COMPILE_METADATA_CONFIGURATION_NAME))
+            project.configurations.getByName(ALL_COMPILE_METADATA_CONFIGURATION_NAME)
         )
 
     @get:Internal

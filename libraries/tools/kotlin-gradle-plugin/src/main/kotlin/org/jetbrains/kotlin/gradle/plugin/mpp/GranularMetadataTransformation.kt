@@ -82,7 +82,7 @@ internal class GranularMetadataTransformation(
     /** A list of scopes that the dependencies from [kotlinSourceSet] are treated as requested dependencies. */
     val sourceSetRequestedScopes: List<KotlinDependencyScope>,
     /** A configuration that holds the dependencies of the appropriate scope for all Kotlin source sets in the project */
-    val allSourceSetsConfigurations: Iterable<Configuration>
+    val allSourceSetsConfiguration: Configuration
 ) {
     val metadataDependencyResolutions: Iterable<MetadataDependencyResolution> by lazy { doTransform() }
 
@@ -131,14 +131,15 @@ internal class GranularMetadataTransformation(
         val dependencyModuleIdsByDirectParent: Map<KotlinSourceSet, Set<Dependency>>
     )
 
+    // TODO generalize once a general production-test and other kinds of inter-compilation visibility are supported
+    // Currently, this is a temporary ad-hoc mechanism for exposing the commonMain dependencies to the test source sets
+    private fun sourceSetsHierarchyInterCompilationClosure(sourceSets: Set<KotlinSourceSet>): Set<KotlinSourceSet> = when {
+        sourceSets.any { it.name == COMMON_TEST_SOURCE_SET_NAME } ->
+            sourceSets + project.kotlinExtension.sourceSets.getByName(COMMON_MAIN_SOURCE_SET_NAME).getSourceSetHierarchy()
+        else -> sourceSets
+    }
+
     private fun getRequestedDependencies(kotlinSourceSet: KotlinSourceSet): RequestedDependencies {
-        // TODO generalize once a general production-test and other kinds of inter-compilation visibility are supported
-        // Currently, this is a temporary ad-hoc mechanism for exposing the commonMain dependencies to the test source sets
-        fun sourceSetsHierarchyInterCompilationClosure(sourceSets: Set<KotlinSourceSet>): Set<KotlinSourceSet> = when {
-            sourceSets.any { it.name == COMMON_TEST_SOURCE_SET_NAME } ->
-                sourceSets + project.kotlinExtension.sourceSets.getByName(COMMON_MAIN_SOURCE_SET_NAME).getSourceSetHierarchy()
-            else -> sourceSets
-        }
 
         fun collectScopedDependenciesFromSourceSets(sourceSets: Iterable<KotlinSourceSet>) =
             sourceSets.flatMapTo(mutableSetOf<Dependency>()) { sourceSet ->
@@ -159,8 +160,27 @@ internal class GranularMetadataTransformation(
         return RequestedDependencies(allDependencies, dependenciesByParentOrSelf.filterKeys { it !== kotlinSourceSet })
     }
 
-    private val resolvedConfigurations: Iterable<LenientConfiguration> by lazy {
-        allSourceSetsConfigurations.map { it.resolvedConfiguration.lenientConfiguration }
+    private val resolvedConfiguration: LenientConfiguration by lazy {
+        /** If [kotlinSourceSet] is not a published source set, its dependencies are not included in [allSourceSetsConfiguration].
+         * In that case, to resolve the dependencies of the source set in a way that is consistent with the published source sets,
+         * we need to create a new configuration with the dependencies from both [allSourceSetsConfiguration] and the
+         * input configuration(s) of the source set. */
+        var modifiedConfiguration: Configuration? = null
+
+        sourceSetRequestedScopes.forEach { scope ->
+            sourceSetsHierarchyInterCompilationClosure(kotlinSourceSet.getSourceSetHierarchy()).forEach { hierarchySourceSet ->
+                val sourceSetConfiguration = project.sourceSetDependencyConfigurationByScope(hierarchySourceSet, scope)
+
+                if (sourceSetConfiguration !in allSourceSetsConfiguration.extendsFrom) {
+                    modifiedConfiguration = (modifiedConfiguration ?: allSourceSetsConfiguration.copyRecursive()).apply {
+                        // instead of extendsFrom, add the dependencies, as the copied configurations don't seem to work with extendsFrom
+                        dependencies.addAll(sourceSetConfiguration.allDependencies)
+                    }
+                }
+            }
+        }
+
+        (modifiedConfiguration ?: allSourceSetsConfiguration).resolvedConfiguration.lenientConfiguration
     }
 
     private fun doTransform(): Iterable<MetadataDependencyResolution> {
@@ -168,7 +188,7 @@ internal class GranularMetadataTransformation(
 
         val (allRequestedDependencies, dependenciesInDirectParents) = getRequestedDependencies(kotlinSourceSet)
 
-        val allModuleDependencies = resolvedConfigurations.flatMap { it.allModuleDependencies }
+        val allModuleDependencies = resolvedConfiguration.allModuleDependencies
 
         val knownProjectDependencies = collectProjectDependencies(
             allRequestedDependencies.filterIsInstance<ProjectDependency>(),
@@ -179,7 +199,7 @@ internal class GranularMetadataTransformation(
             val requestedModules: Set<ModuleId> = allRequestedDependencies.mapTo(mutableSetOf()) { it.moduleId }
 
             addAll(
-                resolvedConfigurations.flatMap { it.firstLevelModuleDependencies }
+                resolvedConfiguration.firstLevelModuleDependencies
                     .filter { it.moduleId in requestedModules }
                     .map { ResolvedDependencyWithParent(it, null) }
             )
