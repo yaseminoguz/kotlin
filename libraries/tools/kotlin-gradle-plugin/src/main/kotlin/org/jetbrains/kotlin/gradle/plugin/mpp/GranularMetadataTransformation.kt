@@ -11,6 +11,8 @@ import org.gradle.api.file.FileCollection
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
 import org.jetbrains.kotlin.gradle.dsl.multiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet.Companion.COMMON_MAIN_SOURCE_SET_NAME
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet.Companion.COMMON_TEST_SOURCE_SET_NAME
 import org.jetbrains.kotlin.gradle.plugin.sources.KotlinDependencyScope
 import org.jetbrains.kotlin.gradle.plugin.sources.getSourceSetHierarchy
 import org.jetbrains.kotlin.gradle.plugin.sources.sourceSetDependencyConfigurationByScope
@@ -71,6 +73,9 @@ private typealias ModuleId = Pair<String?, String> // group ID, artifact ID
 private val ResolvedDependency.moduleId: ModuleId
     get() = moduleGroup to moduleName
 
+private val Dependency.moduleId: ModuleId
+    get() = group to name
+
 internal class GranularMetadataTransformation(
     val project: Project,
     val kotlinSourceSet: KotlinSourceSet,
@@ -115,47 +120,77 @@ internal class GranularMetadataTransformation(
         return result
     }
 
-    private fun getRequestedDependencies(kotlinSourceSet: KotlinSourceSet): Set<Dependency> {
-        val hierarchy = kotlinSourceSet.getSourceSetHierarchy().toMutableSet()
+    private data class RequestedDependencies(
+        val allDependencies: Set<Dependency>,
 
-        // This is an ad-hoc mechanism for exposing the commonMain dependencies to test source sets as well:
-        // TODO once a general production-test visibility mechanism is implemented, replace this workaround with the general solution
-        if (hierarchy.any { it.name == KotlinSourceSet.COMMON_TEST_SOURCE_SET_NAME }) {
-            hierarchy += project.kotlinExtension.sourceSets.getByName(KotlinSourceSet.COMMON_MAIN_SOURCE_SET_NAME).getSourceSetHierarchy()
+        /** If a dependency is declared in a non-root source set, it is important for us to know which dependsdOn parents actually
+         * see the dependency. Those that don't should not be passed to the [SourceSetVisibilityProvider], as determining which
+         * source sets they would see based on their compilations is useless. The keys are
+         * the direct dependsOn parents of [kotlinSourceSet]
+         */
+        val dependencyModuleIdsByDirectParent: Map<KotlinSourceSet, Set<Dependency>>
+    )
+
+    private fun getRequestedDependencies(kotlinSourceSet: KotlinSourceSet): RequestedDependencies {
+        // TODO generalize once a general production-test and other kinds of inter-compilation visibility are supported
+        // Currently, this is a temporary ad-hoc mechanism for exposing the commonMain dependencies to the test source sets
+        fun sourceSetsHierarchyInterCompilationClosure(sourceSets: Set<KotlinSourceSet>): Set<KotlinSourceSet> = when {
+            sourceSets.any { it.name == COMMON_TEST_SOURCE_SET_NAME } ->
+                sourceSets + project.kotlinExtension.sourceSets.getByName(COMMON_MAIN_SOURCE_SET_NAME).getSourceSetHierarchy()
+            else -> sourceSets
         }
 
-        return hierarchy.flatMapTo(mutableSetOf()) { sourceSet ->
-            sourceSetRequestedScopes.flatMap { scope ->
-                project.sourceSetDependencyConfigurationByScope(sourceSet, scope).allDependencies
+        fun collectScopedDependenciesFromSourceSets(sourceSets: Iterable<KotlinSourceSet>) =
+            sourceSets.flatMapTo(mutableSetOf<Dependency>()) { sourceSet ->
+                sourceSetRequestedScopes.flatMapTo(mutableSetOf()) { scope ->
+                    project.sourceSetDependencyConfigurationByScope(sourceSet, scope).allDependencies
+                }
             }
-        }
+
+        val dependenciesByParentOrSelf =
+            sourceSetsHierarchyInterCompilationClosure(kotlinSourceSet.dependsOn + kotlinSourceSet)
+                .associate { sourceSet ->
+                    val hierarchyFromParent = sourceSetsHierarchyInterCompilationClosure(sourceSet.getSourceSetHierarchy())
+                    sourceSet to collectScopedDependenciesFromSourceSets(hierarchyFromParent)
+                }
+
+        val allDependencies = dependenciesByParentOrSelf.values.flatMapTo(mutableSetOf()) { it }
+
+        return RequestedDependencies(allDependencies, dependenciesByParentOrSelf.filterKeys { it !== kotlinSourceSet })
+    }
+
+    private val resolvedConfigurations: Iterable<LenientConfiguration> by lazy {
+        allSourceSetsConfigurations.map { it.resolvedConfiguration.lenientConfiguration }
     }
 
     private fun doTransform(): Iterable<MetadataDependencyResolution> {
         val result = mutableListOf<MetadataDependencyResolution>()
 
-        val resolvedDependenciesFromAllSourceSets = allSourceSetsConfigurations.map { it.resolvedConfiguration.lenientConfiguration }
+        val (allRequestedDependencies, dependenciesInDirectParents) = getRequestedDependencies(kotlinSourceSet)
 
-        val visitedDependencies = mutableSetOf<ResolvedDependency>()
-
-        val directRequestedDependencies = getRequestedDependencies(kotlinSourceSet)
-
-        val directRequestedModules: Set<ModuleId> = directRequestedDependencies.mapTo(mutableSetOf()) { it.group to it.name }
-
-        val allModuleDependencies = resolvedDependenciesFromAllSourceSets.flatMapTo(mutableSetOf()) { it.allModuleDependencies }
+        val allModuleDependencies = resolvedConfigurations.flatMap { it.allModuleDependencies }
 
         val knownProjectDependencies = collectProjectDependencies(
-            directRequestedDependencies.filterIsInstance<ProjectDependency>(),
+            allRequestedDependencies.filterIsInstance<ProjectDependency>(),
             allModuleDependencies
         )
 
         val resolvedDependencyQueue: Queue<ResolvedDependencyWithParent> = ArrayDeque<ResolvedDependencyWithParent>().apply {
+            val requestedModules: Set<ModuleId> = allRequestedDependencies.mapTo(mutableSetOf()) { it.moduleId }
+
             addAll(
-                resolvedDependenciesFromAllSourceSets.flatMap { it.firstLevelModuleDependencies }
-                    .filter { it.moduleId in directRequestedModules }
+                resolvedConfigurations.flatMap { it.firstLevelModuleDependencies }
+                    .filter { it.moduleId in requestedModules }
                     .map { ResolvedDependencyWithParent(it, null) }
             )
         }
+
+        val modulesByParentSourceSet =
+            dependenciesInDirectParents.mapValues { (_, dependencies) ->
+                dependencies.mapTo(mutableSetOf()) { it.moduleId }
+            }
+
+        val visitedDependencies = mutableSetOf<ResolvedDependency>()
 
         while (resolvedDependencyQueue.isNotEmpty()) {
             val (resolvedDependency, parent: ResolvedDependency?) = resolvedDependencyQueue.poll()
@@ -164,7 +199,16 @@ internal class GranularMetadataTransformation(
 
             visitedDependencies.add(resolvedDependency)
 
-            val dependencyResult = processDependency(resolvedDependency, parent, projectDependency)
+            val parentSourceSetsWithParentDependency =
+                parent?.moduleId?.let { id -> modulesByParentSourceSet.filter { id in it.value }.keys }.orEmpty()
+
+            val dependencyResult = processDependency(
+                resolvedDependency,
+                parentSourceSetsWithParentDependency,
+                parent,
+                projectDependency
+            )
+
             result.add(dependencyResult)
 
             val transitiveDependenciesToVisit = when (dependencyResult) {
@@ -209,6 +253,7 @@ internal class GranularMetadataTransformation(
      */
     private fun processDependency(
         module: ResolvedDependency,
+        parentSourceSetsWithDependency: Set<KotlinSourceSet>,
         parent: ResolvedDependency?,
         projectDependency: ProjectDependency?
     ): MetadataDependencyResolution {
@@ -231,7 +276,8 @@ internal class GranularMetadataTransformation(
                 sourceSetRequestedScopes,
                 parent ?: module,
                 projectStructureMetadata,
-                projectDependency?.dependencyProject
+                projectDependency?.dependencyProject,
+                parentSourceSetsWithDependency
             )
 
         // Keep only the transitive dependencies requested by the visible source sets:

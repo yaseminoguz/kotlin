@@ -23,24 +23,42 @@ internal data class DependencySourceSetVisibilityResult(
 internal class SourceSetVisibilityProvider(
     private val project: Project
 ) {
+    /**
+     * Determine which source sets of the [resolvedMppDependency] are visible in the [visibleFrom] source set.
+     *
+     * This requires resolving dependencies of the compilations which [visibleFrom] takes part in, in order to find which variants the
+     * [resolvedMppDependency] got resolved to for those compilations. The [resolvedMppDependency] should therefore be the dependency
+     * on the 'root' module of the MPP (such as 'com.example:lib-foo', not 'com.example:lib-foo-metadata').
+     *
+     * Once the variants are known, they are checked against the [dependencyProjectStructureMetadata], and the
+     * source sets of the dependency are determined that are compiled for all those variants and thus should be visible here.
+     *
+     * If the [resolvedMppDependency] is a project dependency, its project should be passed as [resolvedToOtherProject], as
+     * the Gradle API for dependency variants behaves differently for project dependencies and published ones.
+     *
+     * The returned [DependencySourceSetVisibilityResult] also shows which source sets of the dependency are visible to the
+     * [visibleFrom] source set as well as to at least one of its direct dependsOn parents. For this, the set of the direct source sets
+     * that also 'see' the dependency, either requesting it directly or getting it transitively via dependsOn (or other kinds of dependency
+     * propagation, such as production-test relationships), should be passed as [parentSourceSetsWithDependency].
+     */
     fun getVisibleSourceSets(
         visibleFrom: KotlinSourceSet,
         dependencyScopes: Iterable<KotlinDependencyScope>,
         resolvedMppDependency: ResolvedDependency,
         dependencyProjectStructureMetadata: KotlinProjectStructureMetadata,
-        resolvedToOtherProject: Project?
+        resolvedToOtherProject: Project?,
+        parentSourceSetsWithDependency: Set<KotlinSourceSet>
     ): DependencySourceSetVisibilityResult {
         val visibleByThisSourceSet =
             getVisibleSourceSetsImpl(
                 visibleFrom, dependencyScopes, resolvedMppDependency, dependencyProjectStructureMetadata, resolvedToOtherProject
             )
 
-        val visibleByParents = visibleFrom.dependsOn
-            .flatMapTo(mutableSetOf()) {
-                getVisibleSourceSetsImpl(
-                    it, dependencyScopes, resolvedMppDependency, dependencyProjectStructureMetadata, resolvedToOtherProject
-                )
-            }
+        val visibleByParents = parentSourceSetsWithDependency.flatMapTo(mutableSetOf()) {
+            getVisibleSourceSetsImpl(
+                it, dependencyScopes, resolvedMppDependency, dependencyProjectStructureMetadata, resolvedToOtherProject
+            )
+        }
 
         return DependencySourceSetVisibilityResult(visibleByThisSourceSet, visibleByParents)
     }

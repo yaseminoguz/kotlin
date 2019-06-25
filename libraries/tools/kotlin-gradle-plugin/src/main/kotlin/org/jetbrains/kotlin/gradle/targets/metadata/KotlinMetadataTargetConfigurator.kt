@@ -201,18 +201,18 @@ class KotlinMetadataTargetConfigurator(kotlinPluginVersion: String) :
         isSourceSetPublished: Boolean
     ) {
         KotlinDependencyScope.values().forEach { scope ->
-            val allMetadataConfigurations = mutableListOf<Configuration>().apply {
-                if (scope != KotlinDependencyScope.COMPILE_ONLY_SCOPE)
-                    add(project.configurations.getByName(ALL_RUNTIME_METADATA_CONFIGURATION_NAME))
-                if (scope != KotlinDependencyScope.RUNTIME_ONLY_SCOPE)
-                    add(project.configurations.getByName(ALL_COMPILE_METADATA_CONFIGURATION_NAME))
-            }
+            val allMetadataConfiguration = project.configurations.getByName(
+                when (scope) {
+                    KotlinDependencyScope.RUNTIME_ONLY_SCOPE -> ALL_RUNTIME_METADATA_CONFIGURATION_NAME
+                    else -> ALL_COMPILE_METADATA_CONFIGURATION_NAME
+                }
+            )
 
             val granularMetadataTransformation = GranularMetadataTransformation(
                 project,
                 sourceSet,
                 listOf(scope),
-                allMetadataConfigurations
+                allMetadataConfiguration
             )
 
             (sourceSet as DefaultKotlinSourceSet).dependencyTransformations[scope] = granularMetadataTransformation
