@@ -82,7 +82,8 @@ internal class GranularMetadataTransformation(
     /** A list of scopes that the dependencies from [kotlinSourceSet] are treated as requested dependencies. */
     val sourceSetRequestedScopes: List<KotlinDependencyScope>,
     /** A configuration that holds the dependencies of the appropriate scope for all Kotlin source sets in the project */
-    val allSourceSetsConfiguration: Configuration
+    val allSourceSetsConfiguration: Configuration,
+    val parentTransformations: Lazy<Iterable<GranularMetadataTransformation>>
 ) {
     val metadataDependencyResolutions: Iterable<MetadataDependencyResolution> by lazy { doTransform() }
 
@@ -120,44 +121,18 @@ internal class GranularMetadataTransformation(
         return result
     }
 
-    private data class RequestedDependencies(
-        val allDependencies: Set<Dependency>,
 
-        /** If a dependency is declared in a non-root source set, it is important for us to know which dependsdOn parents actually
-         * see the dependency. Those that don't should not be passed to the [SourceSetVisibilityProvider], as determining which
-         * source sets they would see based on their compilations is useless. The keys are
-         * the direct dependsOn parents of [kotlinSourceSet]
-         */
-        val dependencyModuleIdsByDirectParent: Map<KotlinSourceSet, Set<Dependency>>
-    )
+    private val requestedDependencies: Iterable<Dependency> by lazy {
+        val parentRequestedDependencies = parentTransformations.value.associate { it to it.requestedDependencies }
 
-    // TODO generalize once a general production-test and other kinds of inter-compilation visibility are supported
-    // Currently, this is a temporary ad-hoc mechanism for exposing the commonMain dependencies to the test source sets
-    private fun sourceSetsHierarchyInterCompilationClosure(sourceSets: Set<KotlinSourceSet>): Set<KotlinSourceSet> = when {
-        sourceSets.any { it.name == COMMON_TEST_SOURCE_SET_NAME } ->
-            sourceSets + project.kotlinExtension.sourceSets.getByName(COMMON_MAIN_SOURCE_SET_NAME).getSourceSetHierarchy()
-        else -> sourceSets
-    }
-
-    private fun getRequestedDependencies(kotlinSourceSet: KotlinSourceSet): RequestedDependencies {
-
-        fun collectScopedDependenciesFromSourceSets(sourceSets: Iterable<KotlinSourceSet>) =
-            sourceSets.flatMapTo(mutableSetOf<Dependency>()) { sourceSet ->
-                sourceSetRequestedScopes.flatMapTo(mutableSetOf()) { scope ->
-                    project.sourceSetDependencyConfigurationByScope(sourceSet, scope).allDependencies
-                }
+        fun collectScopedDependenciesFromSourceSet(sourceSet: KotlinSourceSet): Set<Dependency> =
+            sourceSetRequestedScopes.flatMapTo(mutableSetOf()) { scope ->
+                project.sourceSetDependencyConfigurationByScope(sourceSet, scope).allDependencies
             }
 
-        val dependenciesByParentOrSelf =
-            sourceSetsHierarchyInterCompilationClosure(kotlinSourceSet.dependsOn + kotlinSourceSet)
-                .associate { sourceSet ->
-                    val hierarchyFromParent = sourceSetsHierarchyInterCompilationClosure(sourceSet.getSourceSetHierarchy())
-                    sourceSet to collectScopedDependenciesFromSourceSets(hierarchyFromParent)
-                }
+        val ownDependencies = collectScopedDependenciesFromSourceSet(kotlinSourceSet)
 
-        val allDependencies = dependenciesByParentOrSelf.values.flatMapTo(mutableSetOf()) { it }
-
-        return RequestedDependencies(allDependencies, dependenciesByParentOrSelf.filterKeys { it !== kotlinSourceSet })
+        ownDependencies + parentRequestedDependencies.values.flatMapTo(mutableSetOf<Dependency>()) { it }
     }
 
     private val resolvedConfiguration: LenientConfiguration by lazy {
@@ -167,15 +142,14 @@ internal class GranularMetadataTransformation(
          * input configuration(s) of the source set. */
         var modifiedConfiguration: Configuration? = null
 
-        sourceSetRequestedScopes.forEach { scope ->
-            sourceSetsHierarchyInterCompilationClosure(kotlinSourceSet.getSourceSetHierarchy()).forEach { hierarchySourceSet ->
-                val sourceSetConfiguration = project.sourceSetDependencyConfigurationByScope(hierarchySourceSet, scope)
+        val originalDependencies = allSourceSetsConfiguration.allDependencies
 
-                if (sourceSetConfiguration !in allSourceSetsConfiguration.extendsFrom) {
-                    modifiedConfiguration = (modifiedConfiguration ?: allSourceSetsConfiguration.copyRecursive()).apply {
-                        // instead of extendsFrom, add the dependencies, as the copied configurations don't seem to work with extendsFrom
-                        dependencies.addAll(sourceSetConfiguration.allDependencies)
-                    }
+        val requestedDependencies = requestedDependencies
+
+        requestedDependencies.forEach { dependency ->
+            if (dependency !in originalDependencies) {
+                modifiedConfiguration = (modifiedConfiguration ?: allSourceSetsConfiguration.copyRecursive()).apply {
+                    dependencies.add(dependency)
                 }
             }
         }
@@ -186,7 +160,10 @@ internal class GranularMetadataTransformation(
     private fun doTransform(): Iterable<MetadataDependencyResolution> {
         val result = mutableListOf<MetadataDependencyResolution>()
 
-        val (allRequestedDependencies, dependenciesInDirectParents) = getRequestedDependencies(kotlinSourceSet)
+        val parentResolutions =
+            parentTransformations.value.flatMap { it.metadataDependencyResolutions }.groupBy { it.dependency.moduleId }
+
+        val allRequestedDependencies = requestedDependencies
 
         val allModuleDependencies = resolvedConfiguration.allModuleDependencies
 
@@ -205,11 +182,6 @@ internal class GranularMetadataTransformation(
             )
         }
 
-        val modulesByParentSourceSet =
-            dependenciesInDirectParents.mapValues { (_, dependencies) ->
-                dependencies.mapTo(mutableSetOf()) { it.moduleId }
-            }
-
         val visitedDependencies = mutableSetOf<ResolvedDependency>()
 
         while (resolvedDependencyQueue.isNotEmpty()) {
@@ -219,12 +191,9 @@ internal class GranularMetadataTransformation(
 
             visitedDependencies.add(resolvedDependency)
 
-            val parentSourceSetsWithParentDependency =
-                parent?.moduleId?.let { id -> modulesByParentSourceSet.filter { id in it.value }.keys }.orEmpty()
-
             val dependencyResult = processDependency(
                 resolvedDependency,
-                parentSourceSetsWithParentDependency,
+                parentResolutions[resolvedDependency.moduleId].orEmpty(),
                 parent,
                 projectDependency
             )
@@ -273,7 +242,7 @@ internal class GranularMetadataTransformation(
      */
     private fun processDependency(
         module: ResolvedDependency,
-        parentSourceSetsWithDependency: Set<KotlinSourceSet>,
+        parentResolutionsForModule: Iterable<MetadataDependencyResolution>,
         parent: ResolvedDependency?,
         projectDependency: ProjectDependency?
     ): MetadataDependencyResolution {
@@ -285,20 +254,20 @@ internal class GranularMetadataTransformation(
         }
 
         val projectStructureMetadata = mppDependencyMetadataExtractor?.getProjectStructureMetadata()
+            ?: return MetadataDependencyResolution.KeepOriginalDependency(module, projectDependency)
 
-        if (projectStructureMetadata == null) {
-            return MetadataDependencyResolution.KeepOriginalDependency(module, projectDependency)
-        }
-
-        val (allVisibleSourceSets, visibleByParents) =
-            SourceSetVisibilityProvider(project).getVisibleSourceSets(
+        val allVisibleSourceSets =
+            SourceSetVisibilityProvider(project).getVisibleSourceSetNames(
                 kotlinSourceSet,
                 sourceSetRequestedScopes,
                 parent ?: module,
                 projectStructureMetadata,
-                projectDependency?.dependencyProject,
-                parentSourceSetsWithDependency
+                projectDependency?.dependencyProject
             )
+
+        val sourceSetsVisibleInParents = parentResolutionsForModule
+            .filterIsInstance<MetadataDependencyResolution.ChooseVisibleSourceSets>()
+            .flatMapTo(mutableSetOf()) { it.allVisibleSourceSetNames }
 
         // Keep only the transitive dependencies requested by the visible source sets:
         // Visit the transitive dependencies visible by parents, too (i.e. allVisibleSourceSets), as this source set might get a more
@@ -316,7 +285,7 @@ internal class GranularMetadataTransformation(
             (it.moduleId) in requestedTransitiveDependencies
         }
 
-        val visibleSourceSetsExcludingDependsOn = allVisibleSourceSets.filterTo(mutableSetOf()) { it !in visibleByParents }
+        val visibleSourceSetsExcludingDependsOn = allVisibleSourceSets.filterTo(mutableSetOf()) { it !in sourceSetsVisibleInParents }
 
         return object : MetadataDependencyResolution.ChooseVisibleSourceSets(
             module,
