@@ -387,7 +387,13 @@ internal class UltraLightMembersCreator(
             val defaultGetterName = if (createAsAnnotationMethod) propertyName else JvmAbi.getterName(propertyName)
             val getterName = computeMethodName(ktGetter ?: declaration, defaultGetterName, MethodType.GETTER)
             val getterPrototype = lightMethod(getterName, ktGetter ?: declaration, forceStatic = onlyJvmStatic || forceStatic)
-            val getterWrapper = KtUltraLightMethodForSourceDeclaration(getterPrototype, declaration, support, containingClass)
+            val getterWrapper = KtUltraLightMethodForSourceDeclaration(
+                getterPrototype,
+                declaration,
+                support,
+                containingClass,
+                forceToSkipNullabilityAnnotation = createAsAnnotationMethod
+            )
             val getterType: PsiType by lazyPub { methodReturnType(declaration, getterWrapper, isSuspendFunction = false) }
             getterPrototype.setMethodReturnType { getterType }
             addReceiverParameter(declaration, getterWrapper, getterPrototype)
