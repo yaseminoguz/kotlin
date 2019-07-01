@@ -24,6 +24,7 @@ compilerDummyJar(compilerDummyForDependenciesRewriting("compilerDummy") {
 
 runtimeJar(embeddableCompiler()) {
     exclude("com/sun/jna/**")
+    mergeServiceFiles()
 }
 
 sourcesJar()

@@ -19,7 +19,8 @@ val packagesToRelocate =
                 "org.picocontainer",
                 "org.jline",
                 "org.fusesource",
-                "kotlinx.coroutines")
+                "kotlinx.coroutines",
+                "org.jetbrains.annotations")
 
 // The shaded compiler "dummy" is used to rewrite dependencies in projects that are used with the embeddable compiler
 // on the runtime and use some shaded dependencies from the compiler
@@ -57,7 +58,7 @@ private fun ShadowJar.configureEmbeddableCompilerRelocation(withJavaxInject: Boo
     }
 }
 
-private fun Project.compilerShadowJar(taskName: String, body: ShadowJar.() -> Unit): Jar {
+private fun Project.compilerShadowJar(taskName: String, body: ShadowJar.() -> Unit): ShadowJar {
 
     val compilerJar = configurations.getOrCreate("compilerJar")
     dependencies.add(compilerJar.name, dependencies.project(":kotlin-compiler", configuration = "runtimeJar"))
@@ -70,7 +71,7 @@ private fun Project.compilerShadowJar(taskName: String, body: ShadowJar.() -> Un
     }
 }
 
-fun Project.embeddableCompiler(taskName: String = "embeddable", body: ShadowJar.() -> Unit = {}): Jar =
+fun Project.embeddableCompiler(taskName: String = "embeddable", body: ShadowJar.() -> Unit = {}): ShadowJar =
         compilerShadowJar(taskName) {
             configureEmbeddableCompilerRelocation()
             body()
