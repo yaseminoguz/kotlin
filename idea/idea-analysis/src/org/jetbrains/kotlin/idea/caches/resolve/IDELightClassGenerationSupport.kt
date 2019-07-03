@@ -148,6 +148,9 @@ class IDELightClassGenerationSupport(private val project: Project) : LightClassG
         }
 
         private fun findTooComplexDeclaration(declaration: KtDeclaration): PsiElement? {
+
+            return null
+
             if (declaration.hasExpectModifier()) {
                 return declaration
             }
