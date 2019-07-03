@@ -6,7 +6,7 @@
  * KOTLIN DIAGNOSTICS SPEC TEST (NEGATIVE)
  *
  * SPEC VERSION: 0.1-draft
- * PLACE: type-system, introduction -> paragraph 5 -> sentence 2
+ * PLACE: type-system, introduction-1 -> paragraph 5 -> sentence 2
  * NUMBER: 3
  * DESCRIPTION: The use of Boolean literals as the identifier (with backtick) in the class.
  */

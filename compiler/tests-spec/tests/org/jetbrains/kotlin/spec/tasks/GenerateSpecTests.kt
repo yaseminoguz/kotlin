@@ -116,7 +116,7 @@ private object TestsMapGenerator {
     }
 }
 
-private fun generateTests() {
+fun generateTests() {
     testGroup(TEST_PATH, TESTDATA_PATH) {
         testClass<AbstractDiagnosticsTestSpec> {
             model("diagnostics", excludeDirs = listOf("helpers"))

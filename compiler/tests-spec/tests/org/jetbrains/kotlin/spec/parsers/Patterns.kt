@@ -29,7 +29,7 @@ object CommonPatterns {
     const val INTEGER_REGEX = """[1-9]\d*"""
     const val SINGLE_LINE_COMMENT_REGEX = """\/\/\s*%s"""
     const val ASTERISK_REGEX = """\*"""
-    const val SECTIONS_IN_FILE_REGEX = """[\w-]+(,\s+[\w-]+)*"""
+    const val SECTIONS_IN_FILE_REGEX = """[\w-\.]+(,\s+[\w-\.]+)*"""
     const val MULTILINE_COMMENT_REGEX = """\/\*\s+?%s\s+\*\/(?:\n)*"""
 
     val ls: String = System.lineSeparator()
@@ -44,7 +44,7 @@ object CommonPatterns {
     val testPathRegexTemplate = """$testPathBaseRegexTemplate$ps(?<testType>pos|neg)$ps%s$"""
     val issuesPattern: Pattern = Pattern.compile("""(KT-[1-9]\d*)(,\s*KT-[1-9]\d*)*""")
     val sectionsInFilePattern: Pattern = Pattern.compile("""(?<sections>$SECTIONS_IN_FILE_REGEX)""")
-    val sectionsInPathRegex = """(?<sections>(?:[\w-]+)(?:$ps[\w-]+)*?)"""
+    val sectionsInPathRegex = """(?<sections>(?:[\w-\.]+)(?:$ps[\w-\.]+)*?)"""
     val packagePattern: Pattern = Pattern.compile("""(?:^|\n)package (?<packageName>.*?)(?:;|\n)""")
 }
 
