@@ -8,7 +8,7 @@
  * SPEC VERSION: 0.1-draft
  * PLACE: type-system, type-kinds, built-in-types, kotlin.Any -> paragraph 1 -> sentence 1
  * RELEVANT PLACES: type-system, introduction-1 -> paragraph 7 -> sentence 1
- * NUMBER: 1
+ * NUMBER: 2
  * DESCRIPTION: The use of Boolean literals as the identifier (with backtick) in the class.
  * HELPERS: checkType, functions
  */
@@ -16,12 +16,12 @@
 // TESTCASE NUMBER: 1
 fun case_1() {
     checkSubtype<Any>("")
-    val z: Any = ""
+    val x: Any = ""
     funWithAnyArg("")
     checkSubtype<Any>("""
         ………
     """)
-    val z: Any = """0"""
+    val y: Any = """0"""
     funWithAnyArg("""
         =====
     """.trimIndent())
@@ -38,19 +38,19 @@ fun case_2() {
 fun case_3() {
     checkSubtype<Any>(-0f)
     fun z(): Any = -.10000e1
-    funWithAnyArg(Case3(10.1))
+    funWithAnyArg(10.1)
 }
 
 // TESTCASE NUMBER: 4
 fun case_4() {
-    checkSubtype<Any>(throw Exception())
-    fun z1(): Any = return
-    while (true) {
+    <!UNREACHABLE_CODE!>checkSubtype<Any>(<!>throw Exception()<!UNREACHABLE_CODE!>)<!>
+    <!UNREACHABLE_CODE!>var z1: Any = return@case_4<!>
+    <!UNREACHABLE_CODE!>while (true) {
         funWithAnyArg(break)
-    }
-    checkSubtype<Any>(null!!)
-    fun z2(): Any = null!!
-    funWithAnyArg(null!!)
+    }<!>
+    <!UNREACHABLE_CODE!>checkSubtype<Any>(null!!)<!>
+    <!UNREACHABLE_CODE!>fun z2(): Any = null!!<!>
+    <!UNREACHABLE_CODE!>funWithAnyArg(null!!)<!>
 }
 
 // TESTCASE NUMBER: 5
@@ -70,8 +70,10 @@ fun case_6() {
 // TESTCASE NUMBER: 7
 fun case_7() {
     checkSubtype<Any>(object {})
-    val z: Any = { x: Any -> object {} }()
-    funWithAnyArg(object : Comparable<Any> {})
+    val z: Any = { x: Any -> object { val y = x } }(10)
+    funWithAnyArg(object : Comparable<Any> {
+        override fun compareTo(other: Any) = TODO()
+    })
 }
 
 // TESTCASE NUMBER: 8
@@ -86,4 +88,20 @@ fun case_9() {
     checkSubtype<Any>(object {}::class)
     val z: Any = {}::class
     funWithAnyArg(0E0::class)
+}
+
+// TESTCASE NUMBER: 10
+fun case_10() {
+    checkSubtype<Any>(0 + 0.0)
+    val z: Any = if (true) "" else '"'
+    label@ <!UNUSED_LAMBDA_EXPRESSION!>{
+        <!UNREACHABLE_CODE!>funWithAnyArg(<!>return@label<!UNREACHABLE_CODE!>)<!>
+    }<!>
+}
+
+// TESTCASE NUMBER: 11
+fun case_11() {
+    checkSubtype<Any>(Any())
+    val z: Any = if (true) Any() else Any()
+    funWithAnyArg(Any())
 }
