@@ -79,21 +79,22 @@ class IDELightClassGenerationSupport(private val project: Project) : LightClassG
             get() = module.languageVersionSettings.supportsFeature(LanguageFeature.ReleaseCoroutines)
 
         override fun isTooComplexForUltraLightGeneration(element: KtDeclaration): Boolean {
-            val facet = KotlinFacet.get(module)
-            val pluginClasspaths = facet?.configuration?.settings?.compilerArguments?.pluginClasspaths
-            if (!pluginClasspaths.isNullOrEmpty()) {
-                val stringifiedClasspaths = pluginClasspaths.joinToString()
-                LOG.debug { "Using heavy light classes for ${element.forLogString()} because of compiler plugins $stringifiedClasspaths" }
-                return true
-            }
 
-            val problem = findTooComplexDeclaration(element)
-            if (problem != null) {
-                LOG.debug {
-                    "Using heavy light classes for ${element.forLogString()} because of ${StringUtil.trimLog(problem.text, 100)}"
-                }
-                return true
-            }
+//            val facet = KotlinFacet.get(module)
+//            val pluginClasspaths = facet?.configuration?.settings?.compilerArguments?.pluginClasspaths
+//            if (!pluginClasspaths.isNullOrEmpty()) {
+//                val stringifiedClasspaths = pluginClasspaths.joinToString()
+//                LOG.debug { "Using heavy light classes for ${element.forLogString()} because of compiler plugins $stringifiedClasspaths" }
+//                return true
+//            }
+//
+//            val problem = findTooComplexDeclaration(element)
+//            if (problem != null) {
+//                LOG.debug {
+//                    "Using heavy light classes for ${element.forLogString()} because of ${StringUtil.trimLog(problem.text, 100)}"
+//                }
+//                return true
+//            }
             return false
         }
 
