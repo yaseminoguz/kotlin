@@ -72,8 +72,8 @@ data class KotlinCompilationOutputImpl(
 }
 
 data class KotlinCompilationArgumentsImpl(
-    override val defaultArguments: Array<String>,
-    override val currentArguments: Array<String>
+    override val defaultArguments: Array<CompressedCompilerArgument>,
+    override val currentArguments: Array<CompressedCompilerArgument>
 ) : KotlinCompilationArguments {
     constructor(arguments: KotlinCompilationArguments) : this(
         arguments.defaultArguments, //TODO check that we have array here and do not need to make a copy
@@ -160,7 +160,8 @@ data class KotlinMPPGradleModelImpl(
     override val targets: Collection<KotlinTarget>,
     override val extraFeatures: ExtraFeatures,
     override val kotlinNativeHome: String,
-    override val dependencyMap: Map<KotlinDependencyId, KotlinDependency>
+    override val dependencyMap: Map<KotlinDependencyId, KotlinDependency>,
+    override val mapper: PathItemMapper
 ) : KotlinMPPGradleModel {
 
     constructor(mppModel: KotlinMPPGradleModel, cloningCache: MutableMap<Any, Any>) : this(
@@ -177,7 +178,8 @@ data class KotlinMPPGradleModelImpl(
         }.toList(),
         ExtraFeaturesImpl(mppModel.extraFeatures.coroutinesState, mppModel.extraFeatures.isHMPPEnabled),
         mppModel.kotlinNativeHome,
-        mppModel.dependencyMap.map { it.key to it.value.deepCopy(cloningCache) }.toMap()
+        mppModel.dependencyMap.map { it.key to it.value.deepCopy(cloningCache) }.toMap(),
+        mppModel.mapper //TODO make copy
     )
 }
 

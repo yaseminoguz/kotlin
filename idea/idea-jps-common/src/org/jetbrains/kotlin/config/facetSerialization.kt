@@ -24,6 +24,7 @@ import org.jdom.DataConversionException
 import org.jdom.Element
 import org.jdom.Text
 import org.jetbrains.kotlin.cli.common.arguments.*
+import org.jetbrains.kotlin.konan.file.File
 import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.platform.*
 import org.jetbrains.kotlin.platform.impl.FakeK2NativeCompilerArguments
@@ -351,10 +352,41 @@ private fun KotlinFacetSettings.writeLatestConfig(element: Element) {
     }
     compilerArguments?.let { copyBean(it) }?.let {
         it.convertPathsToSystemIndependent()
+        val compilerArguments = it.getClasspath()?.also { classpath ->
+            it.setClasspath("")
+        }
         val compilerArgumentsXml = buildChildElement(element, "compilerArguments", it, filter)
         compilerArgumentsXml.dropVersionsIfNecessary(it)
+        //TODO
+        //TODO fix reading classpath!!!
+        if (compilerArguments != null) {
+            element.getChild("compilerArguments").also { compilerArgumentsElement ->
+                compilerArgumentsElement.addContent(Element("classpathOverride").also { classpathOverride ->
+                    compilerArguments.split(File.pathSeparator).forEach { pathItem ->
+                        Element("option").apply {
+                            setAttribute("value", pathItem)
+                            classpathOverride.addContent(this)
+                        }
+                    }
+                })
+            }
+        }
     }
 }
+
+fun CommonCompilerArguments.getClasspath(): String? = when (this) {
+    is K2MetadataCompilerArguments -> this.classpath
+    is K2JVMCompilerArguments -> this.classpath
+    else -> null
+}
+
+fun CommonCompilerArguments.setClasspath(value: String?) {
+    when (this) {
+        is K2MetadataCompilerArguments -> this.classpath = value
+        is K2JVMCompilerArguments -> this.classpath = value
+    }
+}
+
 
 fun CommonCompilerArguments.detectVersionAutoAdvance() {
     autoAdvanceLanguageVersion = languageVersion == null

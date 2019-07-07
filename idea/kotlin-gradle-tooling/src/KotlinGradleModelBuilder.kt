@@ -28,19 +28,83 @@ import java.lang.Exception
 import java.lang.reflect.InvocationTargetException
 import java.util.*
 
+interface CompressedCompilerArgument : Serializable {
+    val argumentParts: List<Long>
+}
+data class CompressedCompilerArgumentImpl(override val argumentParts: List<Long>) : CompressedCompilerArgument {
+    constructor(
+        stringRepresentation: String,
+        mapper: PathItemMapper
+    ) : this(stringRepresentation.split(File.pathSeparator).map { mapper.getId(it) })
+}
+
+fun List<String>.toArgumentList(mapper: PathItemMapper): List<CompressedCompilerArgument> = this.map { CompressedCompilerArgumentImpl(it, mapper) }
+
+fun List<CompressedCompilerArgument>.toStringList(mapper: PathItemMapper): List<String> =
+    this.map { it.argumentParts.map { itemId -> mapper.getPathItem(itemId) }.joinToString(File.pathSeparator) }
+
+interface PathItemMapper : Serializable {
+    val idToPathItem: HashMap<Long, String>
+    val pathItemToId: HashMap<String, Long>
+}
+
+class PathItemMapperImpl : PathItemMapper {
+    var currentIndex: Long = 0
+    override val idToPathItem = HashMap<Long, String>()
+    override val pathItemToId = HashMap<String, Long>()
+}
+
+fun PathItemMapper.getPathItem(id: Long) = idToPathItem[id]
+
+fun PathItemMapper.getId(pathItem: String): Long {
+    return pathItemToId[pathItem] ?: let {
+        (it as PathItemMapperImpl).currentIndex++
+        pathItemToId[pathItem] = (it as PathItemMapperImpl).currentIndex
+        idToPathItem[(it as PathItemMapperImpl).currentIndex] = pathItem
+        return (it as PathItemMapperImpl).currentIndex
+    }
+}
+
+typealias CompilerArgument = String
+
+
+//fun List<String>.toArgumentList(mapper: PathItemMapper): List<String> = this
+//fun List<CompilerArgument>.toStringList(mapper: PathItemMapper): List<String> = this
+
 interface ArgsInfo : Serializable {
-    val currentArguments: List<String>
-    val defaultArguments: List<String>
-    val dependencyClasspath: List<String>
+    val currentArguments: () -> List<CompilerArgument>
+    val defaultArguments: () -> List<CompilerArgument>
+    val dependencyClasspath: () -> List<CompilerArgument>
+}
+
+interface CompressedArgsInfo : Serializable {
+    val currentArguments: List<CompressedCompilerArgument>
+    val defaultArguments: List<CompressedCompilerArgument>
+    val dependencyClasspath: List<CompressedCompilerArgument>
+
 }
 
 data class ArgsInfoImpl(
-    override val currentArguments: List<String>,
-    override val defaultArguments: List<String>,
-    override val dependencyClasspath: List<String>
+    override val currentArguments: () -> List<CompilerArgument>,
+    override val defaultArguments: () -> List<CompilerArgument>,
+    override val dependencyClasspath: () -> List<CompilerArgument>
 ) : ArgsInfo {
 
-    constructor(argsInfo: ArgsInfo) : this(
+    constructor(argsInfo: CompressedArgsInfo, mapper: PathItemMapper) : this(
+        { argsInfo.currentArguments.toStringList(mapper) },
+        { argsInfo.defaultArguments.toStringList(mapper) },
+        { argsInfo.dependencyClasspath.toStringList(mapper) }
+    )
+}
+
+
+data class CompressedArgsInfoImpl(
+    override val currentArguments: List<CompressedCompilerArgument>,
+    override val defaultArguments: List<CompressedCompilerArgument>,
+    override val dependencyClasspath: List<CompressedCompilerArgument>
+) : CompressedArgsInfo {
+
+    constructor(argsInfo: CompressedArgsInfo) : this(
         ArrayList(argsInfo.currentArguments),
         ArrayList(argsInfo.defaultArguments),
         ArrayList(argsInfo.dependencyClasspath)
@@ -48,34 +112,38 @@ data class ArgsInfoImpl(
 }
 
 typealias CompilerArgumentsBySourceSet = Map<String, ArgsInfo>
+typealias CompressedCompilerArgumentsBySourceSet = Map<String, CompressedArgsInfo>
+
 
 /**
  * Creates deep copy in order to avoid holding links to Proxy objects created by gradle tooling api
  */
-fun CompilerArgumentsBySourceSet.deepCopy(): CompilerArgumentsBySourceSet {
+fun CompressedCompilerArgumentsBySourceSet.deepCopy(mapper: PathItemMapper): CompilerArgumentsBySourceSet {
     val result = HashMap<String, ArgsInfo>()
-    this.forEach { key, value -> result[key] = ArgsInfoImpl(value) }
+    this.forEach { key, value -> result[key] = ArgsInfoImpl(CompressedArgsInfoImpl(value), mapper) }
     return result
 }
 
 interface KotlinGradleModel : Serializable {
     val hasKotlinPlugin: Boolean
-    val compilerArgumentsBySourceSet: CompilerArgumentsBySourceSet
+    val compilerArgumentsBySourceSet: CompressedCompilerArgumentsBySourceSet
     val coroutines: String?
     val platformPluginId: String?
     val implements: List<String>
     val kotlinTarget: String?
     val kotlinTaskProperties: KotlinTaskPropertiesBySourceSet
+    val pathItemMapper: PathItemMapper
 }
 
 data class KotlinGradleModelImpl(
     override val hasKotlinPlugin: Boolean,
-    override val compilerArgumentsBySourceSet: CompilerArgumentsBySourceSet,
+    override val compilerArgumentsBySourceSet: CompressedCompilerArgumentsBySourceSet,
     override val coroutines: String?,
     override val platformPluginId: String?,
     override val implements: List<String>,
     override val kotlinTarget: String? = null,
-    override val kotlinTaskProperties: KotlinTaskPropertiesBySourceSet
+    override val kotlinTaskProperties: KotlinTaskPropertiesBySourceSet,
+    override val pathItemMapper: PathItemMapper
 ) : KotlinGradleModel
 
 abstract class AbstractKotlinGradleModelBuilder : ModelBuilderService {
@@ -175,10 +243,11 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
     }
 
     override fun buildAll(modelName: String?, project: Project): KotlinGradleModelImpl {
+        val pathMapper = PathItemMapperImpl()
         val kotlinPluginId = kotlinPluginIds.singleOrNull { project.plugins.findPlugin(it) != null }
         val platformPluginId = platformPluginIds.singleOrNull { project.plugins.findPlugin(it) != null }
 
-        val compilerArgumentsBySourceSet = LinkedHashMap<String, ArgsInfo>()
+        val compilerArgumentsBySourceSet = LinkedHashMap<String, CompressedArgsInfo>()
         val extraProperties = HashMap<String, KotlinTaskProperties>()
 
         project.getAllTasks(false)[project]?.forEach { compileTask ->
@@ -189,7 +258,12 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
                 ?: compileTask.getCompilerArguments("getSerializedCompilerArgumentsIgnoreClasspathIssues") ?: emptyList()
             val defaultArguments = compileTask.getCompilerArguments("getDefaultSerializedCompilerArguments").orEmpty()
             val dependencyClasspath = compileTask.getDependencyClasspath()
-            compilerArgumentsBySourceSet[sourceSetName] = ArgsInfoImpl(currentArguments, defaultArguments, dependencyClasspath)
+            compilerArgumentsBySourceSet[sourceSetName] =
+                CompressedArgsInfoImpl(
+                    currentArguments.toArgumentList(pathMapper),
+                    defaultArguments.toArgumentList(pathMapper),
+                    dependencyClasspath.toArgumentList(pathMapper)
+                )
             extraProperties.acknowledgeTask(compileTask)
         }
 
@@ -203,7 +277,8 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
             platform,
             implementedProjects.map { it.pathOrName() },
             platform ?: kotlinPluginId,
-            extraProperties
+            extraProperties,
+            pathMapper
         )
     }
 }

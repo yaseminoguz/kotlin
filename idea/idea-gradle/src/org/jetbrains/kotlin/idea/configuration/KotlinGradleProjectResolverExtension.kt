@@ -221,7 +221,7 @@ class KotlinGradleProjectResolverExtension : AbstractProjectResolverExtension() 
 
         ideModule.isResolved = true
         ideModule.hasKotlinPlugin = gradleModel.hasKotlinPlugin
-        ideModule.compilerArgumentsBySourceSet = gradleModel.compilerArgumentsBySourceSet.deepCopy()
+        ideModule.compilerArgumentsBySourceSet = gradleModel.compilerArgumentsBySourceSet.deepCopy(gradleModel.pathItemMapper)
         ideModule.coroutines = gradleModel.coroutines
         ideModule.platformPluginId = gradleModel.platformPluginId
 

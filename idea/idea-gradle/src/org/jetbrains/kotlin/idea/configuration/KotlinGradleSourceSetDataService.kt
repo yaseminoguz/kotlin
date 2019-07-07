@@ -324,9 +324,9 @@ fun configureFacetByGradleModule(
 }
 
 fun configureFacetByCompilerArguments(kotlinFacet: KotlinFacet, argsInfo: ArgsInfo, modelsProvider: IdeModifiableModelsProvider?) {
-    val currentCompilerArguments = argsInfo.currentArguments
-    val defaultCompilerArguments = argsInfo.defaultArguments
-    val dependencyClasspath = argsInfo.dependencyClasspath.map { PathUtil.toSystemIndependentName(it) }
+    val currentCompilerArguments = argsInfo.currentArguments.invoke()
+    val defaultCompilerArguments = argsInfo.defaultArguments.invoke()
+    val dependencyClasspath = argsInfo.dependencyClasspath.invoke().map { PathUtil.toSystemIndependentName(it) }
     if (currentCompilerArguments.isNotEmpty()) {
         parseCompilerArgumentsToFacet(currentCompilerArguments, defaultCompilerArguments, kotlinFacet, modelsProvider)
     }
@@ -338,7 +338,7 @@ private fun getExplicitOutputPath(moduleNode: DataNode<ModuleData>, platformKind
         return null
     }
 
-    val k2jsArgumentList = moduleNode.compilerArgumentsBySourceSet?.get(sourceSet)?.currentArguments ?: return null
+    val k2jsArgumentList = moduleNode.compilerArgumentsBySourceSet?.get(sourceSet)?.currentArguments?.invoke() ?: return null
     return K2JSCompilerArguments().apply { parseCommandLineArguments(k2jsArgumentList, this) }.outputFile
 }
 

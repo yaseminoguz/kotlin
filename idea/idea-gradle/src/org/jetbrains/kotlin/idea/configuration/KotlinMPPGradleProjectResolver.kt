@@ -283,7 +283,7 @@ open class KotlinMPPGradleProjectResolver : AbstractProjectResolverExtension() {
                         it.sdkName = jdkName
                     }
 
-                    val kotlinSourceSet = createSourceSetInfo(compilation, gradleModule, resolverCtx) ?: continue
+                    val kotlinSourceSet = createSourceSetInfo(compilation, gradleModule, resolverCtx, mppModel.mapper) ?: continue
 
                     if (compilation.platform == KotlinPlatform.JVM || compilation.platform == KotlinPlatform.ANDROID) {
                         compilationData.targetCompatibility = (kotlinSourceSet.compilerArguments as? K2JVMCompilerArguments)?.jvmTarget
@@ -718,7 +718,8 @@ open class KotlinMPPGradleProjectResolver : AbstractProjectResolverExtension() {
         fun createSourceSetInfo(
             compilation: KotlinCompilation,
             gradleModule: IdeaModule,
-            resolverCtx: ProjectResolverContext
+            resolverCtx: ProjectResolverContext,
+            mapper: PathItemMapper
         ): KotlinSourceSetInfo? {
             if (compilation.platform.isNotSupported()) return null
             return KotlinSourceSetInfo(compilation).also { sourceSetInfo ->
@@ -727,12 +728,15 @@ open class KotlinMPPGradleProjectResolver : AbstractProjectResolverExtension() {
                 sourceSetInfo.actualPlatforms.addSimplePlatforms(listOf(compilation.platform))
                 sourceSetInfo.isTestModule = compilation.isTestModule
                 sourceSetInfo.compilerArguments =
-                    createCompilerArguments(compilation.arguments.currentArguments.toList(), compilation.platform).also {
+                    createCompilerArguments(
+                        compilation.arguments.currentArguments.toList().toStringList(mapper),
+                        compilation.platform
+                    ).also {
                         it.multiPlatform = true
                     }
                 sourceSetInfo.dependencyClasspath = compilation.dependencyClasspath.toList()
                 sourceSetInfo.defaultCompilerArguments =
-                    createCompilerArguments(compilation.arguments.defaultArguments.toList(), compilation.platform)
+                    createCompilerArguments(compilation.arguments.defaultArguments.toList().toStringList(mapper), compilation.platform)
                 sourceSetInfo.addSourceSets(compilation.sourceSets, compilation.fullName(), gradleModule, resolverCtx)
             }
         }
