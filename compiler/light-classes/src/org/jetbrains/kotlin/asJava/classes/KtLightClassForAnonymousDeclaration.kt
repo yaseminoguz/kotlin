@@ -24,8 +24,8 @@ import com.intellij.reference.SoftReference
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 
-internal open class KtLightClassForAnonymousDeclaration(classOrObject: KtClassOrObject) :
-        KtLightClassForLocalDeclaration(classOrObject), PsiAnonymousClass {
+open class KtLightClassForAnonymousDeclaration(classOrObject: KtClassOrObject, support: KtUltraLightSupport) :
+        KtLightClassForLocalDeclaration(classOrObject, support), PsiAnonymousClass {
 
     private var cachedBaseType: SoftReference<PsiClassType>? = null
 
@@ -117,7 +117,7 @@ internal open class KtLightClassForAnonymousDeclaration(classOrObject: KtClassOr
     override fun getTypeParameterList() = null
     override fun isEnum() = false
 
-    override fun copy(): PsiElement = KtLightClassForAnonymousDeclaration(classOrObject)
+    override fun copy() = KtLightClassForAnonymousDeclaration(classOrObject, support)
 
     companion object {
         private val LOG = Logger.getInstance(KtLightClassForAnonymousDeclaration::class.java)

@@ -82,10 +82,11 @@ sealed class KtLightFieldImpl<D : PsiField>(
     ) : KtLightFieldImpl<PsiEnumConstant>(origin, computeDelegate, containingClass, dummyDelegate), PsiEnumConstant {
         private val initializingClass by lazyPub {
             val kotlinEnumEntry = (lightMemberOrigin as? LightMemberOriginForDeclaration)?.originalElement as? KtEnumEntry
-            if (kotlinEnumEntry != null && kotlinEnumEntry.declarations.isNotEmpty()) {
-                KtLightClassForEnumEntry(kotlinEnumEntry, clsDelegate)
-            }
-            else null
+//            if (kotlinEnumEntry != null && kotlinEnumEntry.declarations.isNotEmpty()) {
+//                KtLightClassForEnumEntry(kotlinEnumEntry, clsDelegate)
+//            }
+//            else null
+            null
         }
 
         // NOTE: we don't use "delegation by" because the compiler would generate method calls to ALL of PsiEnumConstant members,

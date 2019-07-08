@@ -22,10 +22,11 @@ import org.jetbrains.kotlin.psi.KtEnumEntry
 
 internal class KtLightClassForEnumEntry(
         enumEntry: KtEnumEntry,
-        private val enumConstant: PsiEnumConstant
-): KtLightClassForAnonymousDeclaration(enumEntry), PsiEnumConstantInitializer {
+        private val enumConstant: PsiEnumConstant,
+        support: KtUltraLightSupport
+): KtLightClassForAnonymousDeclaration(enumEntry, support), PsiEnumConstantInitializer {
     override fun getEnumConstant(): PsiEnumConstant = enumConstant
-    override fun copy() = KtLightClassForEnumEntry(classOrObject as KtEnumEntry, enumConstant)
+    override fun copy() = KtLightClassForEnumEntry(classOrObject as KtEnumEntry, enumConstant, support)
 
     override fun getParent() = enumConstant
 }

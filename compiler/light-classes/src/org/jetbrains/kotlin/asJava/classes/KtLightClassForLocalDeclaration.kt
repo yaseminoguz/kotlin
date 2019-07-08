@@ -29,8 +29,9 @@ import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 
 open class KtLightClassForLocalDeclaration(
-        classOrObject: KtClassOrObject
-) : KtLightClassForSourceDeclaration(classOrObject) {
+        classOrObject: KtClassOrObject,
+        support: KtUltraLightSupport
+) : KtUltraLightClass(classOrObject, support) {
 
     override fun getDelegate(): PsiClass {
         error("${this::class.java.name} calls to getDelegate")
@@ -40,7 +41,7 @@ open class KtLightClassForLocalDeclaration(
         get() = error("${this::class.java.name} calls to clsDelegate")
 
 
-    override fun copy(): PsiElement = KtLightClassForLocalDeclaration(classOrObject.copy() as KtClassOrObject)
+    override fun copy() = KtLightClassForLocalDeclaration(classOrObject.copy() as KtClassOrObject, support)
     override fun getQualifiedName(): String? = null
 
     override fun getParent() = _parent

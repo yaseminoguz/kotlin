@@ -160,9 +160,9 @@ class IDELightClassGenerationSupport(private val project: Project) : LightClassG
 
     override fun createUltraLightClass(element: KtClassOrObject): KtUltraLightClass? {
         if (element.shouldNotBeVisibleAsLightClass() ||
-            element is KtObjectDeclaration && element.isObjectLiteral() ||
-            element.isLocal ||
-            element is KtEnumEntry ||
+//            element is KtObjectDeclaration && element.isObjectLiteral() ||
+//            element.isLocal ||
+//            element is KtEnumEntry ||
             element.containingKtFile.isScript()
         ) {
             return null
@@ -171,8 +171,18 @@ class IDELightClassGenerationSupport(private val project: Project) : LightClassG
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return null
 
         return KtUltraLightSupportImpl(element, module).let {
-            if (element.hasModifier(KtTokens.INLINE_KEYWORD)) KtUltraLightInlineClass(element, it)
-            else KtUltraLightClass(element, it)
+            when {
+                element is KtObjectDeclaration && element.isObjectLiteral() ->
+                    KtLightClassForAnonymousDeclaration(element, it)
+
+                element.isLocal ->
+                    KtLightClassForLocalDeclaration(element, it)
+
+                (element.hasModifier(KtTokens.INLINE_KEYWORD)) ->
+                    KtUltraLightInlineClass(element, it)
+
+                else -> KtUltraLightClass(element, it)
+            }
         }
     }
 

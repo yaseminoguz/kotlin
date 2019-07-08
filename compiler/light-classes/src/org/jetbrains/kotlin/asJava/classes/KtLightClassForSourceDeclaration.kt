@@ -338,17 +338,16 @@ abstract class KtLightClassForSourceDeclaration(
                 LightClassGenerationSupport.getInstance(classOrObject.project).createUltraLightClass(classOrObject)?.let { return it }
             }
 
-            return null
-//            return when {
-//                classOrObject is KtObjectDeclaration && classOrObject.isObjectLiteral() ->
-//                    KtLightClassForAnonymousDeclaration(classOrObject)
-//
-//                classOrObject.isLocal ->
-//                    KtLightClassForLocalDeclaration(classOrObject)
-//
-//                else ->
-//                    KtLightClassImpl(classOrObject, forceUsingOldLightClasses)
-//            }
+            return when {
+                classOrObject is KtObjectDeclaration && classOrObject.isObjectLiteral() -> null
+                    //KtLightClassForAnonymousDeclaration(classOrObject)
+
+                classOrObject.isLocal -> null
+                    //KtLightClassForLocalDeclaration(classOrObject)
+
+                else ->
+                    KtLightClassImpl(classOrObject, forceUsingOldLightClasses)
+            }
         }
 
         fun getLightClassDataHolder(classOrObject: KtClassOrObject): LightClassDataHolder.ForClass {
