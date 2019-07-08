@@ -1,6 +1,6 @@
 foo -> UAnnotationMethod (name = foo)
 Boolean -> USimpleNameReferenceExpression (identifier = Boolean)
-    Local -> UClass (name = Local)
+    Local -> UClass (name = foo_4$Local)
     bar -> ULambdaExpression
     Local -> UCallExpression (kind = UastCallKind(name='constructor_call'), argCount = 0))
     baz -> ULocalVariable (name = baz)
@@ -9,7 +9,7 @@ Boolean -> USimpleNameReferenceExpression (identifier = Boolean)
     someLocalFun -> ULambdaExpression
     text -> [!] UnknownKotlinExpression (VALUE_PARAMETER)
     String -> USimpleNameReferenceExpression (identifier = String)
-    LocalObject -> UClass (name = LocalObject)
+    LocalObject -> UClass (name = foo_4$LocalObject)
     bar -> UCallExpression (kind = UastCallKind(name='method_call'), argCount = 0))
     == -> USimpleNameReferenceExpression (identifier = ==)
     Local -> UCallExpression (kind = UastCallKind(name='constructor_call'), argCount = 0))

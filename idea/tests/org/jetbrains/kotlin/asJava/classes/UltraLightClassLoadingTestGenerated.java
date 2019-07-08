@@ -64,6 +64,11 @@ public class UltraLightClassLoadingTestGenerated extends AbstractUltraLightClass
         runTest("compiler/testData/asJava/ultraLightClasses/delegatingToInterfaces.kt");
     }
 
+    @TestMetadata("dollarsInNameLocal.kt")
+    public void testDollarsInNameLocal() throws Exception {
+        runTest("compiler/testData/asJava/ultraLightClasses/dollarsInNameLocal.kt");
+    }
+
     @TestMetadata("enums.kt")
     public void testEnums() throws Exception {
         runTest("compiler/testData/asJava/ultraLightClasses/enums.kt");
