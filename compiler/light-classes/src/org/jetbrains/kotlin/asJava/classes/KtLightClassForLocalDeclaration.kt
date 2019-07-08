@@ -32,6 +32,14 @@ open class KtLightClassForLocalDeclaration(
         classOrObject: KtClassOrObject
 ) : KtLightClassForSourceDeclaration(classOrObject) {
 
+    override fun getDelegate(): PsiClass {
+        error("${this::class.java.name} calls to getDelegate")
+    }
+
+    override val clsDelegate: PsiClass
+        get() = error("${this::class.java.name} calls to clsDelegate")
+
+
     override fun copy(): PsiElement = KtLightClassForLocalDeclaration(classOrObject.copy() as KtClassOrObject)
     override fun getQualifiedName(): String? = null
 
