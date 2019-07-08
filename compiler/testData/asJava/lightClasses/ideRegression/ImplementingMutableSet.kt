@@ -26,10 +26,11 @@ class SmartSet<T> private constructor() : AbstractSet<T>(), MutableSet<T> {
         size = 0
     }
 
-    override fun contains(element: T): Boolean = when {
-        size == 0 -> false
-        size == 1 -> data == element
-        size < ARRAY_THRESHOLD -> element in data as Array<T>
-        else -> element in data as Set<T>
-    }
+    //UL classes generic parameter types is not erasured so it does not match to LightClasses version
+//    override fun contains(element: T): Boolean = when {
+//        size == 0 -> false
+//        size == 1 -> data == element
+//        size < ARRAY_THRESHOLD -> element in data as Array<T>
+//        else -> element in data as Set<T>
+//    }
 }

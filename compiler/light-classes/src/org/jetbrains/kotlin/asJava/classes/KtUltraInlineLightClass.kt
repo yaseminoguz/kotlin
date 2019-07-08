@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.asJava.classes
 
 import com.intellij.psi.HierarchicalMethodSignature
-import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.PsiSuperMethodImplUtil
 import org.jetbrains.kotlin.asJava.elements.KtLightField
