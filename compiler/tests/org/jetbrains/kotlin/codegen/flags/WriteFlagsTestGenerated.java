@@ -556,6 +556,29 @@ public class WriteFlagsTestGenerated extends AbstractWriteFlagsTest {
             }
         }
 
+        @TestMetadata("compiler/testData/writeFlags/function/synchronized")
+        @TestDataPath("$PROJECT_ROOT")
+        @RunWith(JUnit3RunnerWithInners.class)
+        public static class Synchronized extends AbstractWriteFlagsTest {
+            private void runTest(String testDataFilePath) throws Exception {
+                KotlinTestUtils.runTest(this::doTest, TargetBackend.JVM, testDataFilePath);
+            }
+
+            public void testAllFilesPresentInSynchronized() throws Exception {
+                KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/writeFlags/function/synchronized"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.JVM, true);
+            }
+
+            @TestMetadata("functionFromInterface.kt")
+            public void testFunctionFromInterface() throws Exception {
+                runTest("compiler/testData/writeFlags/function/synchronized/functionFromInterface.kt");
+            }
+
+            @TestMetadata("propertyAccessorsFromInterface.kt")
+            public void testPropertyAccessorsFromInterface() throws Exception {
+                runTest("compiler/testData/writeFlags/function/synchronized/propertyAccessorsFromInterface.kt");
+            }
+        }
+
         @TestMetadata("compiler/testData/writeFlags/function/withDefaultArguments")
         @TestDataPath("$PROJECT_ROOT")
         @RunWith(JUnit3RunnerWithInners.class)

@@ -333,7 +333,7 @@ public class AsmUtil {
     public static int getMethodAsmFlags(FunctionDescriptor functionDescriptor, OwnerKind kind, DeprecationResolver deprecationResolver) {
         int flags = getCommonCallableFlags(functionDescriptor, kind, deprecationResolver);
 
-        for (AnnotationCodegen.JvmFlagAnnotation flagAnnotation : AnnotationCodegen.METHOD_FLAGS) {
+        for (AnnotationCodegen.JvmFlagAnnotation<FunctionDescriptor> flagAnnotation : AnnotationCodegen.METHOD_FLAGS) {
             flags |= flagAnnotation.getJvmFlag(functionDescriptor.getOriginal());
         }
 

@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.backend.jvm.codegen
 
+import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns.FQ_NAMES
 import org.jetbrains.kotlin.codegen.AsmUtil
 import org.jetbrains.kotlin.codegen.ClassBuilderMode
@@ -111,7 +112,10 @@ open class FunctionCodegen(
             if (irFunction.origin.isSynthetic || irFunction.hasAnnotation(JVM_SYNTHETIC_ANNOTATION_FQ_NAME)) Opcodes.ACC_SYNTHETIC
             else 0
         val strictFpFlag = if (irFunction.hasAnnotation(STRICTFP_ANNOTATION_FQ_NAME)) Opcodes.ACC_STRICT else 0
-        val synchronizedFlag = if (irFunction.hasAnnotation(SYNCHRONIZED_ANNOTATION_FQ_NAME)) Opcodes.ACC_SYNCHRONIZED else 0
+        val synchronizedFlag = if (
+            irFunction.hasAnnotation(SYNCHRONIZED_ANNOTATION_FQ_NAME) &&
+            irFunction.parentAsClass.let { !it.isInterface && it.origin != JvmLoweredDeclarationOrigin.DEFAULT_IMPLS }
+        ) Opcodes.ACC_SYNCHRONIZED else 0
 
         return visibility or
                 modalityFlag or
