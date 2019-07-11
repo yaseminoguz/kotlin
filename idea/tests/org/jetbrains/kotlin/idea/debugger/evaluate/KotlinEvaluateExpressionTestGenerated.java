@@ -61,6 +61,11 @@ public class KotlinEvaluateExpressionTestGenerated extends AbstractKotlinEvaluat
             runTest("idea/testData/debugger/tinyApp/src/evaluate/singleBreakpoint/arrays.kt");
         }
 
+        @TestMetadata("binaryClassPrivateVal.kt")
+        public void testBinaryClassPrivateVal() throws Exception {
+            runTest("idea/testData/debugger/tinyApp/src/evaluate/singleBreakpoint/binaryClassPrivateVal.kt");
+        }
+
         @TestMetadata("boxParam.kt")
         public void testBoxParam() throws Exception {
             runTest("idea/testData/debugger/tinyApp/src/evaluate/singleBreakpoint/boxParam.kt");

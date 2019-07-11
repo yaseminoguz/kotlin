@@ -28,13 +28,16 @@ import org.jetbrains.kotlin.resolve.DescriptorFactory
 import org.jetbrains.kotlin.resolve.descriptorUtil.getSuperClassNotAny
 import org.jetbrains.kotlin.platform.isCommon
 import org.jetbrains.kotlin.platform.jvm.isJvm
+import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
 import org.jetbrains.kotlin.resolve.scopes.SyntheticScope
 import org.jetbrains.kotlin.resolve.scopes.getDescriptorsFiltered
+import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedPropertyDescriptor
 import org.jetbrains.kotlin.synthetic.JavaSyntheticPropertiesScope
 import org.jetbrains.kotlin.synthetic.SyntheticScopeProviderExtension
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.typeUtil.replaceArgumentsWithStarProjections
+import org.jetbrains.kotlin.util.slicedMap.SlicedMap
 import org.jetbrains.org.objectweb.asm.Type
 
 class DebuggerFieldSyntheticScopeProvider : SyntheticScopeProviderExtension {
@@ -117,7 +120,11 @@ class DebuggerFieldSyntheticScope(val javaSyntheticPropertiesScope: JavaSyntheti
         for (descriptor in clazz.unsubstitutedMemberScope.getDescriptorsFiltered(DescriptorKindFilter.VARIABLES)) {
             val propertyDescriptor = descriptor as? PropertyDescriptor ?: continue
             val name = propertyDescriptor.name
-            if (propertyDescriptor.backingField == null || name in consumer) continue
+
+            val backingFieldRequired = BindingContext.BACKING_FIELD_REQUIRED
+                .computeValue(SlicedMap.DO_NOTHING, propertyDescriptor, false, false)
+
+            if (!backingFieldRequired || propertyDescriptor is DeserializedPropertyDescriptor || name in consumer) continue
 
             val type = propertyDescriptor.type
             val sourceElement = propertyDescriptor.source

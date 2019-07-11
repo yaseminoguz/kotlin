@@ -1,0 +1,8 @@
+LineBreakpoint created at binaryClassPrivateVal.kt:8
+Run Java
+Connected to the target VM
+binaryClassPrivateVal.kt:8
+Compile bytecode for cl.foo
+Disconnected from the target VM
+
+Process finished with exit code 0
