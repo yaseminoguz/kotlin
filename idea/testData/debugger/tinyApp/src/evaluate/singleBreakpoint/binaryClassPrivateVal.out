@@ -3,6 +3,8 @@ Run Java
 Connected to the target VM
 binaryClassPrivateVal.kt:8
 Compile bytecode for cl.foo
+Compile bytecode for cl.delegated
+Compile bytecode for cl.field
 Disconnected from the target VM
 
 Process finished with exit code 0

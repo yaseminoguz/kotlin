@@ -614,11 +614,7 @@ abstract class InlineCodegen<out T : BaseExpressionCodegen>(
                 KotlinTypeMapper.getContainingClassesForDeserializedCallable(callableDescriptor as DescriptorWithContainerSource)
 
             val containerId = containingClasses.implClassId
-
-            val bytes = state.inlineCache.classBytes.getOrPut(containerId) {
-                findVirtualFile(state, containerId)?.contentsToByteArray()
-                    ?: throw IllegalStateException("Couldn't find declaration file for $containerId")
-            }
+            val bytes = state.getCachedClassBytes(containerId)
 
             val methodNode =
                 getMethodNode(bytes, asmMethod.name, asmMethod.descriptor, AsmUtil.asmTypeByClassId(containerId)) ?: return null

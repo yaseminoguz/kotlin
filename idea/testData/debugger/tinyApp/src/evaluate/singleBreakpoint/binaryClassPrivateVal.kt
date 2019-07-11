@@ -12,4 +12,10 @@ fun main() {
 // RESULT: Unresolved reference: foo_field
 
 // EXPRESSION: cl.foo
-// RESULT: java.lang.NoSuchFieldError : Field not found: MemberDescription(ownerInternalName = binaryClass/BinaryClass, name = foo, desc = Ljava/lang/String;, isStatic = false)
+// RESULT: "foo": Ljava/lang/String;
+
+// EXPRESSION: cl.delegated
+// RESULT: "bar": Ljava/lang/String;
+
+// EXPRESSION: cl.field
+// RESULT: "baz": Ljava/lang/String;

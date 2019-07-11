@@ -47,6 +47,7 @@ import org.jetbrains.kotlin.util.OperatorNameConventions;
 
 import java.io.File;
 
+import static org.jetbrains.kotlin.codegen.JvmCodegenDebuggerUtil.isDebuggerContext;
 import static org.jetbrains.kotlin.codegen.coroutines.CoroutineCodegenUtilKt.SUSPEND_FUNCTION_CREATE_METHOD_NAME;
 import static org.jetbrains.kotlin.descriptors.ClassKind.ANNOTATION_CLASS;
 import static org.jetbrains.kotlin.descriptors.ClassKind.INTERFACE;
@@ -236,23 +237,6 @@ public class JvmCodegenUtil {
 
         // If the accessor is private or final, it can't be overridden in the subclass and thus we can use direct access
         return Visibilities.isPrivate(accessor.getVisibility()) || accessor.getModality() == FINAL;
-    }
-
-    public static boolean isDebuggerContext(@NotNull CodegenContext context) {
-        PsiFile file = null;
-
-        DeclarationDescriptor contextDescriptor = context.getContextDescriptor();
-        if (contextDescriptor instanceof DeclarationDescriptorWithSource) {
-            SourceElement sourceElement = ((DeclarationDescriptorWithSource) contextDescriptor).getSource();
-            if (sourceElement instanceof PsiSourceElement) {
-                PsiElement psi = ((PsiSourceElement) sourceElement).getPsi();
-                if (psi != null) {
-                    file = psi.getContainingFile();
-                }
-            }
-        }
-
-        return file instanceof KtCodeFragment;
     }
 
     @Nullable

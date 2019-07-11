@@ -527,3 +527,10 @@ fun initDefaultSourceMappingIfNeeded(
         parentContext = parentContext.parentContext
     }
 }
+
+fun GenerationState.getCachedClassBytes(containerId: ClassId): ByteArray {
+    return inlineCache.classBytes.getOrPut(containerId) {
+        findVirtualFile(this, containerId)?.contentsToByteArray()
+            ?: throw IllegalStateException("Couldn't find declaration file for $containerId")
+    }
+}
