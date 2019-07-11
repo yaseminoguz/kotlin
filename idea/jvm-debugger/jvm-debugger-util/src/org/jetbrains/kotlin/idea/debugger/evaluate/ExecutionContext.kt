@@ -48,6 +48,10 @@ class ExecutionContext(val evaluationContext: EvaluationContextImpl, val framePr
         return debugProcess.invokeMethod(evaluationContext, type, method, args)
     }
 
+    fun invokeMethod(type: InterfaceType, method: Method, args: List<Value?>): Value? {
+        return debugProcess.invokeMethod(evaluationContext, type, method, args)
+    }
+
     @Throws(EvaluateException::class)
     fun newInstance(type: ClassType, constructor: Method, args: List<Value?>): ObjectReference {
         return debugProcess.newInstance(evaluationContext, type, constructor, args)
