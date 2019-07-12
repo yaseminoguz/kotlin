@@ -9,9 +9,12 @@ import groovy.lang.Closure
 import org.gradle.api.Project
 import org.gradle.api.attributes.AttributeContainer
 import org.gradle.api.file.FileCollection
+import org.gradle.api.plugins.BasePluginConvention
 import org.gradle.util.ConfigureUtil
 import org.jetbrains.kotlin.gradle.dsl.*
 import org.jetbrains.kotlin.gradle.plugin.*
+import org.jetbrains.kotlin.gradle.tasks.BasicKotlinCompileTaskData
+import org.jetbrains.kotlin.gradle.tasks.IncrementalKotlinCompileTaskData
 import org.jetbrains.kotlin.gradle.plugin.sources.defaultSourceSetLanguageSettingsChecker
 import org.jetbrains.kotlin.gradle.plugin.sources.getSourceSetHierarchy
 import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
@@ -183,6 +186,41 @@ abstract class AbstractKotlinCompilation<T : KotlinCommonOptions>(
         dependencies f@{ ConfigureUtil.configure(configureClosure, this@f) }
 
     override fun toString(): String = "compilation '$compilationName' ($target)"
+
+    internal val moduleName: String
+        get() {
+            val project = target.project
+            val baseName = project.convention.findPlugin(BasePluginConvention::class.java)?.archivesBaseName
+                ?: project.name
+            val suffix = if (compilationName == KotlinCompilation.MAIN_COMPILATION_NAME) "" else "_$compilationName"
+            return filterModuleName("$baseName$suffix")
+        }
+
+    private val _basicTaskDataByTaskName =
+        mutableMapOf<String, BasicKotlinCompileTaskData>()
+
+    internal val basicTaskDataByTaskName: Map<String, BasicKotlinCompileTaskData>
+        get() = _basicTaskDataByTaskName
+
+    internal fun registerKotlinCompileTask(taskName: String) {
+        check(taskName !in basicTaskDataByTaskName)
+
+        val destinationDirNotSetProvider = { error("destinationDir is not set for task $taskName") }
+
+        _basicTaskDataByTaskName[taskName] = when (target.platformType) {
+            KotlinPlatformType.js, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm, KotlinPlatformType.common ->
+                IncrementalKotlinCompileTaskData(
+                    this, taskName, destinationDirNotSetProvider,
+                    useModuleDetectionProvider = { false }
+                )
+            else -> BasicKotlinCompileTaskData(this, taskName, destinationDirNotSetProvider)
+        }
+    }
+
+    internal fun basicTaskDataForTask(taskName: String): BasicKotlinCompileTaskData {
+        check(taskName in basicTaskDataByTaskName) { "Task $taskName was not registered in the compilation $compilationName." }
+        return basicTaskDataByTaskName.getValue(taskName)
+    }
 }
 
 abstract class AbstractKotlinCompilationToRunnableFiles<T : KotlinCommonOptions>(
@@ -263,3 +301,8 @@ internal object CompilationSourceSetUtil {
             sourceSet.name.takeIf { compilations.size > 1 }
         }
 }
+
+private val invalidModuleNameCharactersRegex = """[\\/\r\n\t]""".toRegex()
+
+private fun filterModuleName(moduleName: String): String =
+    moduleName.replace(invalidModuleNameCharactersRegex, "_")

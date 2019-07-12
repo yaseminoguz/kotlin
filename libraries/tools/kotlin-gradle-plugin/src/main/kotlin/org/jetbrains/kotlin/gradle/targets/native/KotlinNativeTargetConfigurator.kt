@@ -109,6 +109,8 @@ open class KotlinNativeTargetConfigurator(
 
     // region Task creation.
     private fun Project.createLinkTask(binary: NativeBinary) {
+        binary.compilation.registerKotlinCompileTask(binary.linkTaskName)
+
         tasks.create(
             binary.linkTaskName,
             KotlinNativeLink::class.java
@@ -145,6 +147,8 @@ open class KotlinNativeTargetConfigurator(
     }
 
     private fun Project.createKlibCompilationTask(compilation: KotlinNativeCompilation) {
+        compilation.registerKotlinCompileTask(compilation.compileKotlinTaskName)
+
         val compileTask = tasks.create(
             compilation.compileKotlinTaskName,
             KotlinNativeCompile::class.java

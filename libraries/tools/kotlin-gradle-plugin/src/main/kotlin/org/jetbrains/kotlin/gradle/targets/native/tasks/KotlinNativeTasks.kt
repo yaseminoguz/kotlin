@@ -108,6 +108,17 @@ abstract class AbstractKotlinNativeCompile : AbstractCompile(), KotlinCompile<Ko
     @get:Internal
     abstract val baseName: String
 
+    private val taskData: BasicKotlinCompileTaskData
+        get() = compilation.basicTaskDataForTask(name)
+
+    override fun getDestinationDir(): File =
+        taskData.destinationDirProvider()
+
+    override fun setDestinationDir(destinationDir: File) {
+        super.setDestinationDir(destinationDir)
+        taskData.destinationDirProvider = { destinationDir }
+    }
+
     // Inputs and outputs
     @InputFiles
     @SkipWhenEmpty

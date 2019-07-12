@@ -469,17 +469,23 @@ class Kapt3KotlinGradleSubplugin : KotlinGradleSubplugin<KotlinCompile> {
     }
 
     private fun Kapt3SubpluginContext.createKaptGenerateStubsTask(): KaptGenerateStubsTask {
-        val kaptTask = project.tasks.create(
-            getKaptTaskName("kaptGenerateStubs"),
-            KaptGenerateStubsTask::class.java
-        )
+        val kaptTaskName = getKaptTaskName("kaptGenerateStubs")
 
-        kaptTask.sourceSetName = sourceSetName
+        kotlinCompile.compilation.registerKotlinCompileTask(kaptTaskName)
+
+        val kaptTask = project.tasks.create(
+            kaptTaskName,
+            KaptGenerateStubsTask::class.java
+        ).apply {
+            compilation = kotlinCompile.compilation
+            taskData.useModuleDetectionProvider = { kotlinCompile.useModuleDetection }
+        }
+
         kaptTask.kotlinCompileTask = kotlinCompile
         kotlinToKaptGenerateStubsTasksMap[kotlinCompile] = kaptTask
 
         kaptTask.stubsDir = getKaptStubsDir()
-        kaptTask.destinationDir = getKaptIncrementalDataDir()
+        kaptTask.setDestinationDir { getKaptIncrementalDataDir() }
         kaptTask.mapClasspath { kotlinCompile.classpath }
         kaptTask.generatedSourcesDir = sourcesOutputDir
         PropertiesProvider(project).mapKotlinTaskProperties(kaptTask)

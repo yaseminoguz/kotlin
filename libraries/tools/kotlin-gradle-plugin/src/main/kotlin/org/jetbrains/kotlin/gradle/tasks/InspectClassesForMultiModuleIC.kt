@@ -9,7 +9,10 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.file.FileCollection
 import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.api.tasks.*
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.jvm.tasks.Jar
+import org.jetbrains.kotlin.gradle.dsl.KotlinSingleJavaTargetExtension
+import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
 import java.io.File
 
 internal open class InspectClassesForMultiModuleIC : DefaultTask() {
@@ -22,7 +25,7 @@ internal open class InspectClassesForMultiModuleIC : DefaultTask() {
     @Suppress("MemberVisibilityCanBePrivate")
     @get:OutputFile
     internal val classesListFile: File
-        get() = File(File(project.buildDir, KOTLIN_BUILD_DIR_NAME), "${sanitizeFileName(jarTask.archiveName)}-classes.txt")
+        get() = (project.kotlinExtension as KotlinSingleJavaTargetExtension).target.defaultArtifactClassesListFile
 
     @Suppress("MemberVisibilityCanBePrivate")
     @get:InputFiles
@@ -37,7 +40,7 @@ internal open class InspectClassesForMultiModuleIC : DefaultTask() {
 
     @get:Input
     internal val archivePath: String
-        get() = jarTask.archivePath.canonicalPath
+        get() = archivePathOf(jarTask)
 
     @TaskAction
     fun run() {
@@ -48,4 +51,8 @@ internal open class InspectClassesForMultiModuleIC : DefaultTask() {
 
     private fun sanitizeFileName(candidate: String): String =
         candidate.filter { it.isLetterOrDigit() }
+
+    companion object {
+        fun archivePathOf(archiveTask: AbstractArchiveTask): String = archiveTask.archivePath.canonicalPath
+    }
 }
