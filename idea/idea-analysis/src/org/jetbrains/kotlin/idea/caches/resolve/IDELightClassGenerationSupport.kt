@@ -143,7 +143,8 @@ class IDELightClassGenerationSupport(private val project: Project) : LightClassG
                 BindingContext.EMPTY, ClassBuilderMode.LIGHT_CLASSES,
                 moduleName, KotlinTypeMapper.LANGUAGE_VERSION_SETTINGS_DEFAULT, // TODO use proper LanguageVersionSettings
                 jvmTarget = JvmTarget.JVM_1_8,
-                typePreprocessor = KotlinType::cleanFromAnonymousTypes
+                typePreprocessor = KotlinType::cleanFromAnonymousTypes,
+                namePreprocessor = ::tryGetPredefinedName
             )
         }
 
