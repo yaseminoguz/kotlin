@@ -501,9 +501,18 @@ public abstract class MemberCodegen<T extends KtPureElement/* TODO: & KtDeclarat
                     generateNopSeparatorIfNeeded(codegen);
 
                     ExpressionCodegen expressionCodegen = codegen.invoke();
+
+                    if (declaration instanceof KtClassInitializer) {
+                        KtClassInitializer classInitializer = (KtClassInitializer) declaration;
+                        expressionCodegen.markLineNumber(classInitializer.getInitKeyword(), true);
+                        expressionCodegen.v.nop();
+                    }
+
                     expressionCodegen.gen(body, Type.VOID_TYPE);
-                    expressionCodegen.markLineNumber(declaration, true);
-                    nopSeparatorNeeded = true;
+                    if (declaration instanceof KtClassInitializer) {
+                        expressionCodegen.markLineNumber(declaration, true);
+                        nopSeparatorNeeded = true;
+                    }
                 }
             }
         }
