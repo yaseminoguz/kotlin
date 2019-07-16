@@ -162,15 +162,16 @@ class LazyScriptDescriptor(
     override fun getUnsubstitutedPrimaryConstructor() = super.getUnsubstitutedPrimaryConstructor()!!
 
     internal val baseClassDescriptor: () -> ClassDescriptor? = resolveSession.storageManager.createNullableLazyValue {
-        val baseClass = getScriptingClass(
-            scriptCompilationConfiguration()[ScriptCompilationConfiguration.baseClass]
-                ?: throw IllegalStateException("Base class is not configured for the script ${scriptInfo.script.containingFile}")
-        )
-        findTypeDescriptor(
-            baseClass,
-            if (baseClass.qualifiedName?.startsWith("kotlin.script.templates.standard") == true) Errors.MISSING_SCRIPT_STANDARD_TEMPLATE
-            else Errors.MISSING_SCRIPT_BASE_CLASS
-        )
+//        val baseClass = getScriptingClass(
+//            scriptCompilationConfiguration()[ScriptCompilationConfiguration.baseClass]
+//                ?: throw IllegalStateException("Base class is not configured for the script ${scriptInfo.script.containingFile}")
+//        )
+//        findTypeDescriptor(
+//            baseClass,
+//            if (baseClass.qualifiedName?.startsWith("kotlin.script.templates.standard") == true) Errors.MISSING_SCRIPT_STANDARD_TEMPLATE
+//            else Errors.MISSING_SCRIPT_BASE_CLASS
+//        )
+        null
     }
 
     override fun computeSupertypes() = listOf(baseClassDescriptor()?.defaultType ?: builtIns.anyType)
