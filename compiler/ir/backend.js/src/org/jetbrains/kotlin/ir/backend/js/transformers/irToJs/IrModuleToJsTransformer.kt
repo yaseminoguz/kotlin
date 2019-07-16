@@ -24,6 +24,7 @@ class IrModuleToJsTransformer(
     private val mainFunction: IrSimpleFunction?,
     private val mainArguments: List<String>?
 ) : BaseIrElementToJsNodeTransformer<JsNode, Nothing?> {
+    var generateScriptModule = false
 
     val moduleName = backendContext.configuration[CommonConfigurationKeys.MODULE_NAME]!!
     private val moduleKind = backendContext.configuration[JSConfigurationKeys.MODULE_KIND]!!
@@ -117,6 +118,59 @@ class IrModuleToJsTransformer(
         return JsExpressionStatement(expression)
     }
 
+    private fun generateScriptModule(module: IrModuleFragment): JsProgram {
+        val additionalPackages = with(backendContext) {
+            externalPackageFragment.values + listOf(
+                bodilessBuiltInsPackageFragment,
+                intrinsics.externalPackageFragment
+            ) + packageLevelJsModules
+        }
+
+        val namer = NameTables(module.files + additionalPackages)
+
+        val program = JsProgram()
+
+        val nameGenerator = IrNamerImpl(
+            newNameTables = namer,
+            rootScope = program.rootScope
+        )
+        val staticContext = JsStaticContext(
+            backendContext = backendContext,
+            irNamer = nameGenerator,
+            rootScope = program.rootScope
+        )
+        val rootContext = JsGenerationContext(
+            parent = null,
+            currentBlock = program.globalBlock,
+            currentFunction = null,
+            currentScope = program.rootScope,
+            staticContext = staticContext
+        )
+
+        val rootFunction = JsFunction(program.rootScope, JsBlock(), "root function")
+        val internalModuleName = rootFunction.scope.declareName("_")
+
+        val (importStatements, importedJsModules) =
+            generateImportStatements(
+                getNameForExternalDeclaration = { rootContext.getNameForStaticDeclaration(it) },
+                declareFreshGlobal = { rootFunction.scope.declareFreshName(sanitizeName(it)) }
+            )
+
+        val moduleBody = generateModuleBody(module, rootContext)
+        val exportStatements = generateExportStatements(module, rootContext, internalModuleName)
+
+        val evaluateScriptFunction = IrDeclarationToJsTransformer.getEvaluateScriptFunction()
+
+        with(program.globalBlock) {
+            statements += importStatements
+            statements += moduleBody.subList(1, moduleBody.size)
+            statements += exportStatements
+            statements += generateCallToEvaluateScriptFunction(evaluateScriptFunction)
+        }
+
+        return program
+    }
+
     private fun generateModule(module: IrModuleFragment): JsProgram {
         val additionalPackages = with(backendContext) {
             externalPackageFragment.values + listOf(
@@ -189,6 +243,13 @@ class IrModuleToJsTransformer(
         return listOfNotNull(mainArgumentsArray, continuation)
     }
 
+    private fun generateCallToEvaluateScriptFunction(evaluateFunction: JsFunction): List<JsStatement> {
+        return evaluateFunction.let {
+            val jsName = evaluateFunction.name
+            listOf(JsInvocation(jsName.makeRef(), emptyList()).makeStmt())
+        }
+    }
+
     private fun generateCallToMain(rootContext: JsGenerationContext): List<JsStatement> {
         if (mainArguments == null) return emptyList() // in case `NO_MAIN` and `main(..)` exists
         return mainFunction?.let {
@@ -247,8 +308,10 @@ class IrModuleToJsTransformer(
         return Pair(importStatements, importedJsModules)
     }
 
-    override fun visitModuleFragment(declaration: IrModuleFragment, data: Nothing?): JsNode =
-        generateModule(declaration)
+    override fun visitModuleFragment(declaration: IrModuleFragment, data: Nothing?): JsNode {
+        return if (generateScriptModule) generateScriptModule(declaration)
+        else generateModule(declaration)
+    }
 
     private fun processClassModels(
         classModelMap: Map<IrClassSymbol, JsIrClassModel>,

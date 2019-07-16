@@ -5,6 +5,8 @@
 
 package org.jetbrains.kotlin.ir.backend.js.transformers.irToJs
 
+import com.sun.tools.javac.util.Assert
+import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.utils.JsGenerationContext
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.js.backend.ast.*
@@ -43,5 +45,52 @@ class IrDeclarationToJsTransformer : BaseIrElementToJsNodeTransformer<JsStatemen
 
     override fun visitVariable(declaration: IrVariable, context: JsGenerationContext): JsStatement {
         return declaration.accept(IrElementToJsStatementTransformer(), context)
+    }
+
+    override fun visitScript(irScript: IrScript, context: JsGenerationContext): JsStatement {
+        val declarations: MutableList<JsStatement> = mutableListOf()
+        val transformer = IrDeclarationToJsTransformer()
+        for (d in irScript.declarations) {
+            declarations += d.accept(transformer, context)
+        }
+        declarations += createEvaluateFunction(irScript.statements, context)
+
+        return JsBlock(declarations)
+    }
+
+    companion object {
+        var evalFunc: JsFunction? = null
+        private var evaluateScriptFunctionCreated: Boolean = false
+
+        fun getEvaluateScriptFunction(): JsFunction {
+            Assert.check(evaluateScriptFunctionCreated)
+            return evalFunc!!
+        }
+    }
+
+    private fun createEvaluateFunction(statementssss: MutableList<IrStatement>, context: JsGenerationContext): JsStatement {
+        val statements: MutableList<JsStatement> = mutableListOf()
+
+        val tr = IrElementToJsStatementTransformer()
+        for (s in statementssss) {
+            statements += s.accept(tr, context)
+        }
+
+        evalFunc = JsFunction(
+            context.currentScope,
+            JsBlock(statements),
+            "Evaluate script function"
+        )
+            .also {
+                it.name = JsName("evaluateScript", false)
+
+                if (it.body.statements.isNotEmpty()) {
+                    val returnExpression = JsReturn((it.body.statements.last() as JsExpressionStatement).expression)
+                    it.body.statements[it.body.statements.size - 1] = returnExpression
+                }
+            }
+
+        evaluateScriptFunctionCreated = true
+        return evalFunc!!.makeStmt()
     }
 }

@@ -148,6 +148,11 @@ class NameTables(packages: List<IrPackageFragment>) {
         for (p in packages) {
             for (declaration in p.declarations) {
                 generateNamesForTopLevelDecl(declaration)
+                if (declaration is IrScript) {
+                    for (memberDecl in declaration.declarations) {
+                        generateNamesForTopLevelDecl(memberDecl)
+                    }
+                }
             }
         }
 
@@ -255,7 +260,9 @@ class NameTables(packages: List<IrPackageFragment>) {
             parent = parent.parent
         }
 
-        error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
+        return declaration.fqNameWhenAvailable!!.shortName().identifier
+
+//        error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
     }
 
     fun getNameForMemberField(field: IrField): String {
