@@ -30,12 +30,17 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.impl.XSourcePositionImpl
+import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor
 import org.jetbrains.kotlin.idea.KotlinFileType
+import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptorIfAny
 import org.jetbrains.kotlin.idea.core.util.CodeInsightUtils
 import org.jetbrains.kotlin.idea.core.util.getLineNumber
 import org.jetbrains.kotlin.idea.debugger.findElementAtLine
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.*
+import org.jetbrains.kotlin.resolve.inline.isInlineOnly
+import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstance
 import java.util.*
 
@@ -54,6 +59,9 @@ class ApplicabilityResult(val isApplicable: Boolean, val shouldStop: Boolean) {
 
         @JvmField
         val DEFINITELY_YES = ApplicabilityResult(isApplicable = true, shouldStop = true)
+
+        @JvmField
+        val DEFINITELY_NO = ApplicabilityResult(isApplicable = false, shouldStop = true)
 
         @JvmField
         val MAYBE_YES = ApplicabilityResult(isApplicable = true, shouldStop = false)
@@ -179,3 +187,11 @@ fun getLambdasAtLineIfAny(file: KtFile, line: Int): List<KtFunction> {
     }
 }
 
+internal fun KtCallableDeclaration.isInlineOnly(): Boolean {
+    if (!hasModifier(KtTokens.INLINE_KEYWORD) || annotationEntries.isEmpty()) {
+        return false
+    }
+
+    val descriptor = resolveToDescriptorIfAny(BodyResolveMode.PARTIAL) as? CallableMemberDescriptor ?: return false
+    return descriptor.isInlineOnly()
+}
