@@ -112,7 +112,7 @@ abstract class GradleImportingTestCase : ExternalSystemImportingTestCase() {
         myProjectSettings = GradleProjectSettings().apply {
             this.isUseQualifiedModuleNames = false
         }
-        GradleSettings.getInstance(myProject).gradleVmOptions = "-Xmx128m -XX:MaxPermSize=64m"
+        GradleSettings.getInstance(myProject).gradleVmOptions = "-Xmx128m -XX:MaxPermSize=64m -XX:MaxMetaspaceExpansion=0"
         System.setProperty(ExternalSystemExecutionSettings.REMOTE_PROCESS_IDLE_TTL_IN_MS_KEY, GRADLE_DAEMON_TTL_MS.toString())
         configureWrapper()
         sdkCreationChecker = KotlinSdkCreationChecker()
@@ -271,7 +271,7 @@ abstract class GradleImportingTestCase : ExternalSystemImportingTestCase() {
 
     companion object {
         const val GRADLE_JDK_NAME = "Gradle JDK"
-        private const val GRADLE_DAEMON_TTL_MS = 10000
+        private const val GRADLE_DAEMON_TTL_MS = 100
 
         @JvmStatic
         protected val SUFFIX = ".after"
