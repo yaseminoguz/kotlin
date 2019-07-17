@@ -90,6 +90,7 @@ fun compileForRepl(configuration: CompilerConfiguration, psi2irContext: Generato
         psi2irContext.irBuiltIns,
         psi2irContext.symbolTable,
         moduleFragment,
+        emptySet(),
         configuration
     )
 

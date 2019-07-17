@@ -131,19 +131,14 @@ class IrModuleToJsTransformer(
         val program = JsProgram()
 
         val nameGenerator = IrNamerImpl(
-            newNameTables = namer,
-            rootScope = program.rootScope
+            newNameTables = namer
         )
         val staticContext = JsStaticContext(
             backendContext = backendContext,
-            irNamer = nameGenerator,
-            rootScope = program.rootScope
+            irNamer = nameGenerator
         )
         val rootContext = JsGenerationContext(
-            parent = null,
-            currentBlock = program.globalBlock,
             currentFunction = null,
-            currentScope = program.rootScope,
             staticContext = staticContext
         )
 
