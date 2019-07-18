@@ -23,6 +23,8 @@ import org.jetbrains.kotlin.codegen.inline.SMAP.Companion.END
 import org.jetbrains.kotlin.codegen.inline.SMAP.Companion.FILE_SECTION
 import org.jetbrains.kotlin.codegen.inline.SMAP.Companion.LINE_SECTION
 import org.jetbrains.kotlin.codegen.inline.SMAP.Companion.STRATA_SECTION
+import org.jetbrains.kotlin.load.java.JvmAbi
+import org.jetbrains.kotlin.utils.SmartSet
 import java.util.*
 import kotlin.math.max
 
@@ -247,12 +249,20 @@ open class DefaultSourceMapper(val sourceInfo: SourceInfo) : SourceMapper {
     }
 
     private fun createMapping(fileMapping: RawFileMapping, lineNumber: Int): Int {
+        if (lineNumber in JvmAbi.SYNTHETIC_MARKER_LINE_NUMBERS) {
+            return fileMapping.mapMarkerLine(lineNumber)
+        }
+
         val mappedLineIndex = fileMapping.mapNewLineNumber(lineNumber, maxUsedValue, lastMappedWithChanges == fileMapping, callSiteMarker)
         if (mappedLineIndex > maxUsedValue) {
             lastMappedWithChanges = fileMapping
             maxUsedValue = mappedLineIndex
         }
         return mappedLineIndex
+    }
+
+    fun createMappingForMarkerLine(line: Int) {
+        origin.mapMarkerLine(line)
     }
 }
 
@@ -284,15 +294,16 @@ class SMAP(val fileMappings: List<FileMapping>) {
 
 class RawFileMapping(val name: String, val path: String) {
     private val rangeMappings = arrayListOf<RangeMapping>()
+    private val rangeMappingsForMarkers = SmartSet.create<RangeMapping>()
 
     private var lastMappedWithNewIndex = -1000
 
-    fun toFileMapping() =
-        FileMapping(name, path).apply {
-            for (range in rangeMappings) {
-                addRangeMapping(range)
-            }
+    fun toFileMapping(): FileMapping {
+        return FileMapping(name, path).apply {
+            rangeMappings.forEach { addRangeMapping(it) }
+            rangeMappingsForMarkers.forEach { addRangeMapping(it) }
         }
+    }
 
     fun initRange(start: Int, end: Int) {
         assert(rangeMappings.isEmpty()) { "initRange should only be called for empty mapping" }
@@ -320,6 +331,11 @@ class RawFileMapping(val name: String, val path: String) {
     fun mapNewInterval(source: Int, dest: Int, range: Int) {
         val rangeMapping = RangeMapping(source, dest, range)
         rangeMappings.add(rangeMapping)
+    }
+
+    fun mapMarkerLine(line: Int): Int {
+        rangeMappingsForMarkers += RangeMapping(line, line)
+        return line
     }
 
     private fun couldFoldInRange(first: Int, second: Int): Boolean {

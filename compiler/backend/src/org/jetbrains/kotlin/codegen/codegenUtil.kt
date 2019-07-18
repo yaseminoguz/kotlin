@@ -38,6 +38,8 @@ import org.jetbrains.kotlin.resolve.calls.callUtil.getFirstArgumentExpression
 import org.jetbrains.kotlin.resolve.calls.callUtil.getResolvedCall
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 import org.jetbrains.kotlin.resolve.descriptorUtil.builtIns
+import org.jetbrains.kotlin.resolve.inline.InlineUtil
+import org.jetbrains.kotlin.resolve.inline.isInlineOnly
 import org.jetbrains.kotlin.resolve.jvm.AsmTypes
 import org.jetbrains.kotlin.resolve.jvm.JvmClassName
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOrigin
@@ -659,4 +661,10 @@ private fun generateLambdaForRunSuspend(
 
     lambdaBuilder.done()
     return lambdaBuilder.thisName
+}
+
+fun isLambdaPassedToInlineOnly(lambda: KtFunction, bindingContext: BindingContext): Boolean {
+    val parameterDescriptor = InlineUtil.getInlineArgumentDescriptor(lambda, bindingContext) ?: return false
+    val containingCallable = parameterDescriptor.containingDeclaration
+    return containingCallable is FunctionDescriptor && containingCallable.isInlineOnly()
 }

@@ -69,10 +69,12 @@ import java.util.*;
 import static org.jetbrains.kotlin.builtins.KotlinBuiltIns.isNullableAny;
 import static org.jetbrains.kotlin.codegen.AsmUtil.*;
 import static org.jetbrains.kotlin.codegen.CodegenUtilKt.generateBridgeForMainFunctionIfNecessary;
+import static org.jetbrains.kotlin.codegen.CodegenUtilKt.isLambdaPassedToInlineOnly;
 import static org.jetbrains.kotlin.codegen.serialization.JvmSerializationBindings.METHOD_FOR_FUNCTION;
 import static org.jetbrains.kotlin.codegen.state.KotlinTypeMapper.isAccessor;
 import static org.jetbrains.kotlin.descriptors.CallableMemberDescriptor.Kind.DECLARATION;
 import static org.jetbrains.kotlin.descriptors.ModalityKt.isOverridable;
+import static org.jetbrains.kotlin.load.java.JvmAbi.LOCAL_VARIABLE_INLINE_ARGUMENT_SYNTHETIC_LINE_NUMBER;
 import static org.jetbrains.kotlin.resolve.DescriptorToSourceUtils.getSourceFromDescriptor;
 import static org.jetbrains.kotlin.resolve.DescriptorUtils.*;
 import static org.jetbrains.kotlin.resolve.inline.InlineOnlyKt.isEffectivelyInlineOnly;
@@ -646,11 +648,19 @@ public class FunctionCodegen {
                 frameMap.enter(continuationValueDescriptor, typeMapper.mapType(continuationValueDescriptor));
             }
             if (context.isInlineMethodContext()) {
-                functionFakeIndex = newFakeTempIndex(mv, frameMap);
+                functionFakeIndex = newFakeTempIndex(mv, frameMap, parentCodegen, -1);
             }
 
             if (context instanceof InlineLambdaContext) {
-                lambdaFakeIndex = newFakeTempIndex(mv, frameMap);
+                int lineNumber = -1;
+                if (strategy instanceof ClosureGenerationStrategy) {
+                    KtDeclarationWithBody declaration = ((ClosureGenerationStrategy) strategy).getDeclaration();
+                    BindingContext bindingContext = typeMapper.getBindingContext();
+                    if (declaration instanceof KtFunctionLiteral && isLambdaPassedToInlineOnly((KtFunction) declaration, bindingContext)) {
+                        lineNumber = LOCAL_VARIABLE_INLINE_ARGUMENT_SYNTHETIC_LINE_NUMBER;
+                    }
+                }
+                lambdaFakeIndex = newFakeTempIndex(mv, frameMap, parentCodegen, lineNumber);
             }
 
             methodEntry = new Label();
@@ -714,8 +724,19 @@ public class FunctionCodegen {
         }
     }
 
-    private static int newFakeTempIndex(@NotNull MethodVisitor mv, FrameMap frameMap) {
+    private static int newFakeTempIndex(
+            @NotNull MethodVisitor mv,
+            @NotNull FrameMap frameMap,
+            @NotNull MemberCodegen codegen,
+            int lineNumber
+    ) {
         int fakeIndex = frameMap.enterTemp(Type.INT_TYPE);
+        if (lineNumber >= 0) {
+            Label label = new Label();
+            mv.visitLabel(label);
+            mv.visitLineNumber(lineNumber, label);
+            codegen.getOrCreateSourceMapper().createMappingForMarkerLine(lineNumber);
+        }
         mv.visitLdcInsn(0);
         mv.visitVarInsn(ISTORE, fakeIndex);
         return fakeIndex;

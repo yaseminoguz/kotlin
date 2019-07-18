@@ -9,4 +9,5 @@ inline fun lookAtMe(f: () -> Int) {
     a + f()
 }
 
-// 2 13 14 3 15 5 8 9 10
+// IGNORE_BACKEND: JVM_IR
+// 2 14 15 65100 3 16 5 8 9 10
