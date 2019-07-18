@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.load.kotlin.TypeMappingMode
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
 import org.jetbrains.kotlin.resolve.DescriptorUtils
@@ -180,8 +181,8 @@ fun tryGetPredefinedName(klass: ClassDescriptor): String? {
 
     val sourceClass = (klass.source as? KotlinSourceElement)?.psi as? KtClassOrObject
 
-    return if (sourceClass != null && sourceClass.isLocal)
-        KtLightClassForLocalDeclaration.getClassNameForLocalDeclaration(sourceClass)
+    return if (sourceClass?.isLocal == true)
+        (sourceClass.nameAsName ?: SpecialNames.NO_NAME_PROVIDED).asString()
     else null
 }
 

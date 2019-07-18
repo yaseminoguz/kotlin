@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.asJava.classes
 
 import com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.asJava.classes.KtLightClassForLocalDeclaration.Companion.getClassNameForLocalDeclaration
 import org.jetbrains.kotlin.asJava.classes.KtLightClassForLocalDeclaration.Companion.getParentForLocalDeclaration
 import org.jetbrains.kotlin.psi.KtClassOrObject
 
@@ -17,13 +16,9 @@ open class KtUltraLightClassForLocalDeclaration(
 
     private val _parent: PsiElement? by lazyPub { getParentForLocalDeclaration(classOrObject) }
 
-    private val _name by lazyPub { getClassNameForLocalDeclaration(classOrObject) }
-
     override fun copy() = KtUltraLightClassForLocalDeclaration(classOrObject.copy() as KtClassOrObject, support)
 
     override fun getQualifiedName(): String? = null
-
-    override fun getName(): String? = _name
 
     override fun getParent() = _parent
 }

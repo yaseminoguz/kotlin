@@ -24,10 +24,6 @@ open class KtLightClassForLocalDeclaration(
 
     override fun copy(): PsiElement = KtLightClassForLocalDeclaration(classOrObject.copy() as KtClassOrObject)
 
-    private val _name by lazyPub { getClassNameForLocalDeclaration(classOrObject) }
-
-    override fun getName(): String? = _name
-
     override fun getQualifiedName(): String? = null
 
     override fun getParent() = _parent
@@ -103,26 +99,6 @@ open class KtLightClassForLocalDeclaration(
             }
 
             return if (declaration is KtClass) declaration.toLightClass() else null
-        }
-
-        fun getClassNameForLocalDeclaration(classOrObject: KtClassOrObject): String {
-            val parents =
-                PsiTreeUtil.collectParents(
-                    classOrObject,
-                    KtNamedDeclaration::class.java,
-                    /*includeMyself = */ true
-                ) { it === null || it is KtFile }
-
-            parents.reverse()
-
-            return parents.joinToString("$") {
-                when {
-                    it.name == SpecialNames.ANONYMOUS -> "${it.name}_${it.textOffset}"
-                    it.name == SpecialNames.NO_NAME_PROVIDED.asString() -> "${it.name}_${it.textOffset}"
-                    it is KtNamedFunction -> "${it.name}_${it.textOffset}"
-                    else -> it.name ?: "${it.textOffset}"
-                }
-            }
         }
     }
 }
