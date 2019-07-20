@@ -93,6 +93,11 @@ abstract class GradleImportingTestCase : ExternalSystemImportingTestCase() {
 
     open fun isApplicableTest(): Boolean = true
 
+    open fun jvmArgsByGradleVersion(version: String) : String = when {
+        version.startsWith("4.") -> "-Xmx256m -XX:MaxPermSize=64m"
+        else -> "-Xmx128m -XX:MaxPermSize=64m"
+    }
+
     override fun setUp() {
         myJdkHome = IdeaTestUtil.requireRealJdkHome()
         super.setUp()
@@ -112,7 +117,7 @@ abstract class GradleImportingTestCase : ExternalSystemImportingTestCase() {
         myProjectSettings = GradleProjectSettings().apply {
             this.isUseQualifiedModuleNames = false
         }
-        GradleSettings.getInstance(myProject).gradleVmOptions = "-Xmx128m -XX:MaxPermSize=64m -XX:MaxMetaspaceExpansion=0"
+        GradleSettings.getInstance(myProject).gradleVmOptions = jvmArgsByGradleVersion(gradleVersion)
         System.setProperty(ExternalSystemExecutionSettings.REMOTE_PROCESS_IDLE_TTL_IN_MS_KEY, GRADLE_DAEMON_TTL_MS.toString())
         configureWrapper()
         sdkCreationChecker = KotlinSdkCreationChecker()
