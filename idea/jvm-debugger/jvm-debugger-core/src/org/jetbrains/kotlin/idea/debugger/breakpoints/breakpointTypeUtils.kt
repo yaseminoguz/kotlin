@@ -18,6 +18,7 @@ package org.jetbrains.kotlin.idea.debugger.breakpoints
 
 import com.intellij.debugger.SourcePosition
 import com.intellij.debugger.ui.breakpoints.JavaLineBreakpointType
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
@@ -34,6 +35,7 @@ import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptorIfAny
 import org.jetbrains.kotlin.idea.core.util.CodeInsightUtils
+import org.jetbrains.kotlin.idea.core.util.attachmentByPsiFile
 import org.jetbrains.kotlin.idea.core.util.getLineNumber
 import org.jetbrains.kotlin.idea.debugger.findElementAtLine
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -45,6 +47,8 @@ import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstance
 import java.util.*
 
 interface KotlinBreakpointType
+
+private val LOG = Logger.getInstance("BreakpointTypeUtilsKt")
 
 class ApplicabilityResult(val isApplicable: Boolean, val shouldStop: Boolean) {
     companion object {
@@ -81,7 +85,7 @@ fun isBreakpointApplicable(file: VirtualFile, line: Int, project: Project, check
     val checked = HashSet<PsiElement>()
 
     XDebuggerUtil.getInstance().iterateLine(project, document, line, fun(element: PsiElement): Boolean {
-        if (element is PsiWhiteSpace || element.getParentOfType<PsiComment>(false) != null) {
+        if (element is PsiWhiteSpace || element.getParentOfType<PsiComment>(false) != null || !element.isValid) {
             return true
         }
 
@@ -109,6 +113,12 @@ private fun getTopmostParentOnLineOrSelf(element: PsiElement, document: Document
     var parent = current.parent
     while (parent != null) {
         val offset = parent.textOffset
+        if (offset > document.textLength) {
+            val containingFile = element.containingFile
+            val attachments = if (containingFile != null) arrayOf(attachmentByPsiFile(containingFile)) else emptyArray()
+            LOG.error("Wrong offset: $offset for line $line. Should be in range: [0, ${document.textLength}].", *attachments)
+            break
+        }
         if (offset >= 0 && document.getLineNumber(offset) != line) break
 
         current = parent
