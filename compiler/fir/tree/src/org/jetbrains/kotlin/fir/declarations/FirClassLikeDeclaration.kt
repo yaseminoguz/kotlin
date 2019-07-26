@@ -14,8 +14,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeAliasSymbol
 import org.jetbrains.kotlin.fir.visitors.FirVisitor
 
-interface FirClassLikeDeclaration<F : FirClassLikeDeclaration<F>> :
-    @VisitedSupertype FirMemberDeclaration, FirStatement, FirSymbolOwner<F> {
+interface FirClassLikeDeclaration<F : FirClassLikeDeclaration<F>> :    @VisitedSupertype FirMemberDeclaration, FirStatement, FirSymbolOwner<F> {
     override val symbol: FirClassLikeSymbol<F>
 
     override fun <R, D> accept(visitor: FirVisitor<R, D>, data: D): R {

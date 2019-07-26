@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -64,6 +63,8 @@ open class FirClassImpl(
     override fun replaceSupertypes(newSupertypes: List<FirTypeRef>): FirRegularClass {
         superTypeRefs.clear()
         superTypeRefs.addAll(newSupertypes)
+        callbackOnSupertypesComputed?.invoke()
+        callbackOnSupertypesComputed = null
         return this
     }
 
@@ -76,5 +77,11 @@ open class FirClassImpl(
         declarations.transformInplace(transformer, data)
         companionObject = declarations.asSequence().filterIsInstance<FirRegularClass>().firstOrNull { it.isCompanion }
         return result
+    }
+
+    private var callbackOnSupertypesComputed: (() -> Unit)? = null
+
+    override fun setCallbackOnSupertypesComputed(callback: () -> Unit) {
+        callbackOnSupertypesComputed = callback
     }
 }

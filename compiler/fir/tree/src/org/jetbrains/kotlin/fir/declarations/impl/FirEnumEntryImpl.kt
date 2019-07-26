@@ -10,7 +10,10 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.declarations.*
+import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirEnumEntry
+import org.jetbrains.kotlin.fir.declarations.FirRegularClass
+import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.expressions.FirCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -53,7 +56,15 @@ class FirEnumEntryImpl(
     override fun replaceSupertypes(newSupertypes: List<FirTypeRef>): FirRegularClass {
         superTypeRefs.clear()
         superTypeRefs.addAll(newSupertypes)
+        callbackOnSupertypesComputed?.invoke()
+        callbackOnSupertypesComputed = null
         return this
+    }
+
+    private var callbackOnSupertypesComputed: (() -> Unit)? = null
+
+    override fun setCallbackOnSupertypesComputed(callback: () -> Unit) {
+        callbackOnSupertypesComputed = callback
     }
 
     override fun replaceTypeRef(newTypeRef: FirTypeRef) {
