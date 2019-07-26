@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     testCompile(projectTests(":compiler"))
+    compile("org.jsoup:jsoup:1.10.3")
 }
 
 sourceSets {
