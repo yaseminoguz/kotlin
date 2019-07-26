@@ -21,14 +21,28 @@ import com.intellij.psi.impl.source.resolve.ResolveCache
 import com.intellij.util.IncorrectOperationException
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.PackageViewDescriptor
-import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.fir.FirResolvedCallableReference
+import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirResolvedImport
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccess
+import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
+import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.resolve.firSymbolProvider
+import org.jetbrains.kotlin.fir.resolve.toSymbol
+import org.jetbrains.kotlin.fir.symbols.AbstractFirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.ConeClassLikeLookupTagImpl
+import org.jetbrains.kotlin.fir.types.ConeLookupTagBasedType
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.idea.codeInsight.DescriptorToSourceUtilsIde
+import org.jetbrains.kotlin.idea.fir.firResolveState
+import org.jetbrains.kotlin.idea.fir.getOrBuildFir
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtReferenceExpression
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.bindingContextUtil.getReferenceTargets
-import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import java.util.*
 
 interface KtReference : PsiPolyVariantReference {
@@ -77,9 +91,48 @@ abstract class AbstractKtReference<T : KtElement>(element: T) : PsiPolyVariantRe
         class KotlinReferenceResolver : ResolveCache.PolyVariantResolver<AbstractKtReference<KtElement>> {
             class KotlinResolveResult(element: PsiElement) : PsiElementResolveResult(element)
 
+            private fun FirResolvedTypeRef.toTargetPsi(session: FirSession): PsiElement? {
+                val type = type as? ConeLookupTagBasedType ?: return null
+                return (type.lookupTag.toSymbol(session) as? AbstractFirBasedSymbol<*>)?.fir?.psi
+            }
+
+            private fun ClassId.toTargetPsi(session: FirSession): PsiElement? {
+                return (ConeClassLikeLookupTagImpl(this).toSymbol(session) as? AbstractFirBasedSymbol<*>)?.fir?.psi
+            }
+
             private fun resolveToPsiElements(ref: AbstractKtReference<KtElement>): Collection<PsiElement> {
-                val bindingContext = ref.expression.analyze(BodyResolveMode.PARTIAL)
-                return resolveToPsiElements(ref, bindingContext, ref.getTargetDescriptors(bindingContext))
+                val expression = ref.expression
+                val state = expression.firResolveState()
+                val session = state.getSession(expression)
+                when (val fir = expression.getOrBuildFir(state)) {
+                    is FirQualifiedAccess -> {
+                        val calleeReference = fir.calleeReference as? FirResolvedCallableReference ?: return emptyList()
+                        val target = (calleeReference.coneSymbol as? AbstractFirBasedSymbol<*>)?.fir
+                        return listOfNotNull(target?.psi)
+                    }
+                    is FirResolvedTypeRef -> {
+                        return listOfNotNull(fir.toTargetPsi(session))
+                    }
+                    is FirResolvedQualifier -> {
+                        val classId = fir.classId ?: return emptyList()
+                        return listOfNotNull(classId.toTargetPsi(session))
+                    }
+                    is FirAnnotationCall -> {
+                        val type = fir.typeRef as? FirResolvedTypeRef ?: return emptyList()
+                        return listOfNotNull(type.toTargetPsi(session))
+                    }
+                    is FirResolvedImport -> {
+                        val classId = fir.resolvedClassId
+                        if (classId != null) {
+                            return listOfNotNull(classId.toTargetPsi(session))
+                        }
+                        val name = fir.importedName ?: return emptyList()
+                        val symbolProvider = session.firSymbolProvider
+                        return symbolProvider.getTopLevelCallableSymbols(fir.packageFqName, name).mapNotNull { it.fir.psi } +
+                                listOfNotNull(symbolProvider.getClassLikeSymbolByFqName(ClassId(fir.packageFqName, name))?.fir?.psi)
+                    }
+                    else -> error("Unsupported KtReference target FIR: ${fir.render()} of ${fir.javaClass}")
+                }
             }
 
             private fun resolveToPsiElements(ref: AbstractKtReference<KtElement>, context: BindingContext, targetDescriptors: Collection<DeclarationDescriptor>): Collection<PsiElement> {
