@@ -66,8 +66,8 @@ import org.jetbrains.kotlin.idea.search.usagesSearch.getAccessorNames
 import org.jetbrains.kotlin.idea.search.usagesSearch.getClassNameForCompanionObject
 import org.jetbrains.kotlin.idea.stubindex.KotlinSourceFilterScope
 import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
+import org.jetbrains.kotlin.idea.util.findPsiElements
 import org.jetbrains.kotlin.idea.util.hasActualsFor
-import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.*
@@ -328,7 +328,9 @@ class UnusedSymbolInspection : AbstractKotlinInspection() {
                 return false
             }
             // check if we import member(s) from object / nested object / enum and search for their usages
-            val originalDeclaration = (descriptor as? TypeAliasDescriptor)?.classDescriptor?.findPsi() as? KtNamedDeclaration
+            val originalDeclaration = (descriptor as? TypeAliasDescriptor)?.classDescriptor?.findPsiElements(declaration.project) {
+                declaration.resolveScope
+            } as? KtNamedDeclaration
             if (declaration is KtClassOrObject || originalDeclaration is KtClassOrObject) {
                 if (import.isAllUnder) {
                     val importedFrom = import.importedReference?.getQualifiedElementSelector()?.mainReference?.resolve()
