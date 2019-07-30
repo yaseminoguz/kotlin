@@ -324,6 +324,7 @@ abstract class AbstractKotlinNativeCompile : AbstractCompile(), KotlinCompile<Ko
 open class KotlinNativeCompile : AbstractKotlinNativeCompile() {
     @Internal
     override lateinit var compilation: KotlinNativeCompilation
+        internal set
 
     @get:Input
     override val outputKind = LIBRARY
