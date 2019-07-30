@@ -203,7 +203,7 @@ internal open class GradleCompilerRunner(protected val task: Task) {
 
                     target.compilations.forEach { compilation ->
                         if (compilation is AbstractKotlinCompilation<*>) {
-                            compilation.basicTaskDataByTaskName.values
+                            compilation.taskDataByTaskName.values
                                 .filterIsInstance<IncrementalKotlinCompileTaskData>()
                                 .forEach { taskData ->
                                     val module = IncrementalModuleEntry(
@@ -230,7 +230,7 @@ internal open class GradleCompilerRunner(protected val task: Task) {
                             target.compilations.findByName(KotlinCompilation.MAIN_COMPILATION_NAME) ?: return@forEach
 
                         val mainTaskData =
-                            (mainCompilation as AbstractKotlinCompilation<*>).basicTaskDataForTask(mainCompilation.compileKotlinTaskName)
+                            (mainCompilation as AbstractKotlinCompilation<*>).taskDataForTask(mainCompilation.compileKotlinTaskName)
 
                         if (mainTaskData is IncrementalKotlinCompileTaskData) {
                             val module = IncrementalModuleEntry(

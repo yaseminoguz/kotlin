@@ -196,18 +196,18 @@ abstract class AbstractKotlinCompilation<T : KotlinCommonOptions>(
             return filterModuleName("$baseName$suffix")
         }
 
-    private val _basicTaskDataByTaskName =
+    private val _taskDataByTaskName =
         mutableMapOf<String, BasicKotlinCompileTaskData>()
 
-    internal val basicTaskDataByTaskName: Map<String, BasicKotlinCompileTaskData>
-        get() = _basicTaskDataByTaskName
+    internal val taskDataByTaskName: Map<String, BasicKotlinCompileTaskData>
+        get() = _taskDataByTaskName
 
     internal fun registerKotlinCompileTask(taskName: String) {
-        check(taskName !in basicTaskDataByTaskName)
+        check(taskName !in taskDataByTaskName)
 
         val destinationDirNotSetProvider = { error("destinationDir is not set for task $taskName") }
 
-        _basicTaskDataByTaskName[taskName] = when (target.platformType) {
+        _taskDataByTaskName[taskName] = when (target.platformType) {
             KotlinPlatformType.js, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm, KotlinPlatformType.common ->
                 IncrementalKotlinCompileTaskData(
                     this, taskName, destinationDirNotSetProvider,
@@ -217,9 +217,9 @@ abstract class AbstractKotlinCompilation<T : KotlinCommonOptions>(
         }
     }
 
-    internal fun basicTaskDataForTask(taskName: String): BasicKotlinCompileTaskData {
-        check(taskName in basicTaskDataByTaskName) { "Task $taskName was not registered in the compilation $compilationName." }
-        return basicTaskDataByTaskName.getValue(taskName)
+    internal fun taskDataForTask(taskName: String): BasicKotlinCompileTaskData {
+        check(taskName in taskDataByTaskName) { "Task $taskName was not registered in the compilation $compilationName." }
+        return taskDataByTaskName.getValue(taskName)
     }
 }
 

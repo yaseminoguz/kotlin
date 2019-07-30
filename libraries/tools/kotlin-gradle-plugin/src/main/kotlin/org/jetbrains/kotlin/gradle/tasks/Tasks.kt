@@ -144,7 +144,7 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments>() : AbstractKo
 
     @get:Internal
     internal val taskData: IncrementalKotlinCompileTaskData
-        get() = compilation.basicTaskDataForTask(name) as IncrementalKotlinCompileTaskData
+        get() = compilation.taskDataForTask(name) as IncrementalKotlinCompileTaskData
 
     @get:Input
     internal open var useModuleDetection: Boolean

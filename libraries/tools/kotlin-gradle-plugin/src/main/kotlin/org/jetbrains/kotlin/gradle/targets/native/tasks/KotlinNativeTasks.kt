@@ -109,7 +109,7 @@ abstract class AbstractKotlinNativeCompile : AbstractCompile(), KotlinCompile<Ko
     abstract val baseName: String
 
     private val taskData: BasicKotlinCompileTaskData
-        get() = compilation.basicTaskDataForTask(name)
+        get() = compilation.taskDataForTask(name)
 
     override fun getDestinationDir(): File =
         taskData.destinationDirProvider()
