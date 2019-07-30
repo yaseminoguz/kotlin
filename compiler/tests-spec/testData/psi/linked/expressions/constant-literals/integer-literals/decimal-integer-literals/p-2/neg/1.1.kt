@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-draft
+ * SPEC VERSION: 0.1-85
  * PLACE: constant-literals, integer-literals, decimal-integer-literals -> paragraph 2 -> sentence 1
  * NUMBER: 1
  * DESCRIPTION: Integer literals with 0 in the first position and it contains more than 1 digit.

@@ -3,7 +3,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-draft
+ * SPEC VERSION: 0.1-85
  * PLACE: expressions, when-expression, exhaustive-when-expressions -> paragraph 2 -> sentence 8
  * NUMBER: 3
  * DESCRIPTION: Exhaustive when using subclasses of the nullable sealed class.

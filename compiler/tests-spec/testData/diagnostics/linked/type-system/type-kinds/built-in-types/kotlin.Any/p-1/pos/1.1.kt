@@ -5,7 +5,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-draft
+ * SPEC VERSION: 0.1-85
  * PLACE: type-system, type-kinds, built-in-types, kotlin.Any -> paragraph 1 -> sentence 1
  * RELEVANT PLACES: type-system, introduction-1 -> paragraph 7 -> sentence 1
  * NUMBER: 1

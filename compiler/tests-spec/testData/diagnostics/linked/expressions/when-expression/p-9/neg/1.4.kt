@@ -3,7 +3,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-draft
+ * SPEC VERSION: 0.1-85
  * PLACE: expressions, when-expression -> paragraph 9 -> sentence 1
  * NUMBER: 4
  * DESCRIPTION: 'When' least upper bound of the types check (when exhaustive via sealed class).

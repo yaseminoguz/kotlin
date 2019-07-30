@@ -3,7 +3,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-draft
+ * SPEC VERSION: 0.1-85
  * PLACE: expressions, when-expression -> paragraph 3 -> sentence 2
  * NUMBER: 2
  * DESCRIPTION: When without bound value, forbidden comma in the when condition.

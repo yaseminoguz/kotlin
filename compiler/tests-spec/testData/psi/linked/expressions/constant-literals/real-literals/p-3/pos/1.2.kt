@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-draft
+ * SPEC VERSION: 0.1-85
  * PLACE: constant-literals, real-literals -> paragraph 3 -> sentence 1
  * NUMBER: 2
  * DESCRIPTION: Real literals with omitted a whole-number part and an exponent mark.

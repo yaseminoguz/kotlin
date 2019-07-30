@@ -3,7 +3,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-draft
+ * SPEC VERSION: 0.1-85
  * PLACE: expressions, when-expression -> paragraph 5 -> sentence 1
  * NUMBER: 1
  * DESCRIPTION: 'When' without bound value and with 'else' branch not in the last position.

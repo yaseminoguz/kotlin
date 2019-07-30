@@ -54,7 +54,7 @@ object CommonParser {
             placeMatcher.group("sentenceNumber").toInt()
         )
 
-    private fun parseLinkedSpecTest(testFilePath: String, testFiles: TestFiles): LinkedSpecTest {
+    fun parseLinkedSpecTest(testFilePath: String, testFiles: TestFiles): LinkedSpecTest {
         val parsedTestFile = parseTestInfo(testFilePath, testFiles, SpecTestLinkedType.LINKED)
         val testInfoElements = parsedTestFile.testInfoElements
         val placeMatcher = testInfoElements[LinkedSpecTestFileInfoElementType.PLACE]!!.additionalMatcher!!

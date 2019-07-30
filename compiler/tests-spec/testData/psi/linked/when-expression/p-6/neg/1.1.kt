@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-draft
+ * SPEC VERSION: 0.1-85
  * PLACE: when-expression -> paragraph 6 -> sentence 1
  * NUMBER: 1
  * DESCRIPTION: 'When' with bound value and empty control structure body.
