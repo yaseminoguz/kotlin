@@ -128,8 +128,9 @@ class MoveKotlinDeclarationsHandler : MoveHandlerDelegate() {
                 val targetDirectory = if (targetContainer != null) {
                     MoveClassesOrPackagesImpl.getInitialTargetDirectory(targetContainer, elements)
                 } else null
-                val searchInComments = KotlinRefactoringSettings.instance!!.MOVE_SEARCH_IN_COMMENTS
-                val searchInText = KotlinRefactoringSettings.instance!!.MOVE_SEARCH_FOR_TEXT
+                val searchInComments = KotlinRefactoringSettings.instance.MOVE_SEARCH_IN_COMMENTS
+                val searchInText = KotlinRefactoringSettings.instance.MOVE_SEARCH_FOR_TEXT
+                val deleteEmptySourceFiles = KotlinRefactoringSettings.instance.MOVE_DELETE_EMPTY_SOURCE_FILES
                 val targetFile = targetContainer as? KtFile
                 val moveToPackage = targetContainer !is KtFile
 
@@ -142,6 +143,7 @@ class MoveKotlinDeclarationsHandler : MoveHandlerDelegate() {
                     moveToPackage,
                     searchInComments,
                     searchInText,
+                    deleteEmptySourceFiles,
                     callback
                 ).show()
             }

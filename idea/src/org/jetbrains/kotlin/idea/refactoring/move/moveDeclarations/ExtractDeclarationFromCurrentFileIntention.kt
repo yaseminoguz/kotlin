@@ -96,6 +96,7 @@ class ExtractDeclarationFromCurrentFileIntention :
                     true,
                     true,
                     true,
+                    true,
                     MoveCallback {
                         runBlocking {
                             withTimeoutOrNull(TIMEOUT_FOR_IMPORT_OPTIMIZING_MS) {

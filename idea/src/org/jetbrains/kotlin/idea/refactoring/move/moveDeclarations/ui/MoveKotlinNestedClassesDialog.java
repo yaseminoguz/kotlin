@@ -15,13 +15,15 @@ import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.refactoring.HelpID;
 import com.intellij.refactoring.RefactoringBundle;
 import com.intellij.refactoring.classMembers.AbstractMemberInfoModel;
 import com.intellij.refactoring.classMembers.MemberInfoChange;
 import com.intellij.refactoring.move.MoveCallback;
 import com.intellij.refactoring.move.MoveHandler;
+import com.intellij.refactoring.move.moveInner.MoveInnerImpl;
 import com.intellij.refactoring.ui.RefactoringDialog;
+import com.intellij.refactoring.util.CommonRefactoringUtil;
 import kotlin.collections.CollectionsKt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -217,40 +219,35 @@ public class MoveKotlinNestedClassesDialog extends RefactoringDialog {
         return "#" + getClass().getName();
     }
 
+    private Model<MoveKotlinDeclarationsProcessor> getModel() {
+        return new MoveKotlinNestedClassesModel(
+                myProject,
+                openInEditorCheckBox.isSelected(),
+                getSelectedElementsToMove(),
+                originalClass,
+                targetClass,
+                moveCallback);
+    }
+
+
     @Override
     protected void canRun() throws ConfigurationException {
-        if (targetClass == null) throw new ConfigurationException("No destination class specified");
-
-        if (!(targetClass instanceof KtClassOrObject)) throw new ConfigurationException("Destination class must be a Kotlin class");
-
-        if (originalClass == targetClass) {
-            throw new ConfigurationException(RefactoringBundle.message("source.and.destination.classes.should.be.different"));
-        }
-
-        for (KtClassOrObject classOrObject : getSelectedElementsToMove()) {
-            if (PsiTreeUtil.isAncestor(classOrObject, targetClass, false)) {
-                throw new ConfigurationException("Cannot move nested class " + classOrObject.getName() + " to itself");
-            }
-        }
+        getModel().assertModel();
     }
 
     @Override
     protected void doAction() {
-        List<KtClassOrObject> elementsToMove = getSelectedElementsToMove();
-        KotlinMoveTarget target = new KotlinMoveTargetForExistingElement((KtClassOrObject) targetClass);
-        MoveDeclarationsDelegate.NestedClass delegate = new MoveDeclarationsDelegate.NestedClass();
-        MoveDeclarationsDescriptor descriptor = new MoveDeclarationsDescriptor(
-                myProject,
-                MoveKotlinDeclarationsProcessorKt.MoveSource(elementsToMove),
-                target,
-                delegate,
-                false,
-                false,
-                false,
-                moveCallback,
-                openInEditorCheckBox.isSelected()
-        );
-        invokeRefactoring(new MoveKotlinDeclarationsProcessor(descriptor, Mover.Default.INSTANCE));
+
+        MoveKotlinDeclarationsProcessor processor;
+        try {
+            processor = getModel().computeModelResult();
+        }
+        catch (ConfigurationException e) {
+            CommonRefactoringUtil.showErrorMessage(MoveInnerImpl.REFACTORING_NAME, e.getMessage(), HelpID.MOVE_INNER_UPPER, myProject);
+            return;
+        }
+
+        invokeRefactoring(processor);
     }
 
     @Override
@@ -258,7 +255,5 @@ public class MoveKotlinNestedClassesDialog extends RefactoringDialog {
         return targetClassChooser.getChildComponent();
     }
 
-    private static class MemberInfoModelImpl extends AbstractMemberInfoModel<KtNamedDeclaration, KotlinMemberInfo> {
-
-    }
+    private static class MemberInfoModelImpl extends AbstractMemberInfoModel<KtNamedDeclaration, KotlinMemberInfo> { }
 }
