@@ -9,6 +9,9 @@ import com.intellij.openapi.options.ConfigurationException
 
 internal interface Model<out T> {
     @Throws(ConfigurationException::class)
+    fun computeModelResult(throwOnConflicts: Boolean = false): T
+
+    @Throws(ConfigurationException::class)
     fun computeModelResult(): T
 
     @Throws(ConfigurationException::class)

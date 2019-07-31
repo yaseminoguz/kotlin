@@ -32,20 +32,20 @@ import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import java.io.File
 
 internal class MoveKotlinTopLevelDeclarationsModel(
-    private val project: Project,
-    private val elementsToMove: List<KtNamedDeclaration>,
-    private val targetPackage: String,
-    private val selectedPsiDirectory: PsiDirectory?,
-    private val fileNameInPackage: String,
-    private val targetFilePath: String,
-    private val isMoveToPackage: Boolean,
-    private val isSearchReferences: Boolean,
-    private val isSearchInComments: Boolean,
-    private val isSearchInNonJavaFiles: Boolean,
-    private val isDeleteEmptyFiles: Boolean,
-    private val isUpdatePackageDirective: Boolean,
-    private val isFullFileMove: Boolean,
-    private val moveCallback: MoveCallback?
+    val project: Project,
+    val elementsToMove: List<KtNamedDeclaration>,
+    val targetPackage: String,
+    val selectedPsiDirectory: PsiDirectory?,
+    val fileNameInPackage: String,
+    val targetFilePath: String,
+    val isMoveToPackage: Boolean,
+    val isSearchReferences: Boolean,
+    val isSearchInComments: Boolean,
+    val isSearchInNonJavaFiles: Boolean,
+    val isDeleteEmptyFiles: Boolean,
+    val isUpdatePackageDirective: Boolean,
+    val isFullFileMove: Boolean,
+    val moveCallback: MoveCallback?
 ) : Model<BaseRefactoringProcessor> {
 
     private val sourceDirectory by lazy {
@@ -198,7 +198,10 @@ internal class MoveKotlinTopLevelDeclarationsModel(
     override fun assertModel(): Unit = run { verifiedMoveTarget }
 
     @Throws(ConfigurationException::class)
-    override fun computeModelResult(): BaseRefactoringProcessor {
+    override fun computeModelResult() = computeModelResult(throwOnConflicts = false)
+
+    @Throws(ConfigurationException::class)
+    override fun computeModelResult(throwOnConflicts: Boolean): BaseRefactoringProcessor {
 
         val target = verifiedMoveTarget
 
@@ -225,7 +228,8 @@ internal class MoveKotlinTopLevelDeclarationsModel(
                         targetFileName,
                         searchInComments = isSearchInComments,
                         searchInNonJavaFiles = isSearchInNonJavaFiles,
-                        moveCallback = moveCallback
+                        moveCallback = moveCallback,
+                        throwOnConflicts = throwOnConflicts
                     )
                 else
                     KotlinAwareMoveFilesOrDirectoriesProcessor(
@@ -235,7 +239,8 @@ internal class MoveKotlinTopLevelDeclarationsModel(
                         isSearchReferences,
                         searchInComments = isSearchInComments,
                         searchInNonJavaFiles = isSearchInNonJavaFiles,
-                        moveCallback = moveCallback
+                        moveCallback = moveCallback,
+                        throwOnConflicts = throwOnConflicts
                     )
             }
         }
@@ -254,6 +259,6 @@ internal class MoveKotlinTopLevelDeclarationsModel(
             analyzeConflicts = true,
             searchReferences = isSearchReferences
         )
-        return MoveKotlinDeclarationsProcessor(options, Mover.Default)
+        return MoveKotlinDeclarationsProcessor(options, Mover.Default, throwOnConflicts)
     }
 }

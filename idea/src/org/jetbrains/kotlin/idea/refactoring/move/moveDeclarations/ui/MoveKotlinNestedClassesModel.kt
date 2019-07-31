@@ -11,17 +11,18 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.RefactoringBundle
 import com.intellij.refactoring.move.MoveCallback
+import org.jetbrains.kotlin.idea.refactoring.fqName.getKotlinFqName
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.*
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
 
 internal class MoveKotlinNestedClassesModel(
-    private val project: Project,
-    private val openInEditorCheckBox: Boolean,
-    private val selectedElementsToMove: List<KtClassOrObject>,
-    private val originalClass: KtClassOrObject,
-    private val targetClass: PsiElement?,
-    private val moveCallback: MoveCallback?
+    val project: Project,
+    val openInEditorCheckBox: Boolean,
+    val selectedElementsToMove: List<KtClassOrObject>,
+    val originalClass: KtClassOrObject,
+    val targetClass: PsiElement?,
+    val moveCallback: MoveCallback?
 ) : Model<MoveKotlinDeclarationsProcessor> {
 
     private fun getCheckedTargetClass(): KtElement {
@@ -50,7 +51,10 @@ internal class MoveKotlinNestedClassesModel(
     }
 
     @Throws(ConfigurationException::class)
-    override fun computeModelResult(): MoveKotlinDeclarationsProcessor {
+    override fun computeModelResult() = computeModelResult(throwOnConflicts = false)
+
+    @Throws(ConfigurationException::class)
+    override fun computeModelResult(throwOnConflicts: Boolean): MoveKotlinDeclarationsProcessor {
         val elementsToMove = selectedElementsToMove
         val target = KotlinMoveTargetForExistingElement(getCheckedTargetClass())
         val delegate = MoveDeclarationsDelegate.NestedClass()
@@ -66,6 +70,6 @@ internal class MoveKotlinNestedClassesModel(
             openInEditor = openInEditorCheckBox
         )
 
-        return MoveKotlinDeclarationsProcessor(descriptor, Mover.Default)
+        return MoveKotlinDeclarationsProcessor(descriptor, Mover.Default, throwOnConflicts)
     }
 }

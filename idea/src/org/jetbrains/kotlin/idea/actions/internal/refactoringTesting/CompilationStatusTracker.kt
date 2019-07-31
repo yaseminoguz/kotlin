@@ -16,7 +16,7 @@ import com.intellij.openapi.compiler.CompileContext
 import com.intellij.openapi.compiler.CompilerTopics.COMPILATION_STATUS
 import com.intellij.openapi.project.Project
 
-internal class RunActionWithErrorCountCheck(private val project: Project) {
+internal class CompilationStatusTracker(private val project: Project) {
 
     private val compilationStatusListener = object : CompilationStatusListener {
 

@@ -38,16 +38,16 @@ import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 
 internal class MoveKotlinNestedClassesToUpperLevelModel(
-    private val project: Project,
-    private val innerClass: KtClassOrObject,
-    private val target: PsiElement,
-    private val parameter: String?,
-    private val className: String,
-    private val passOuterClass: Boolean,
-    private val searchInComments: Boolean,
-    private val isSearchInNonJavaFiles: Boolean,
-    private val packageName: String,
-    private val isOpenInEditor: Boolean
+    val project: Project,
+    val innerClass: KtClassOrObject,
+    val target: PsiElement,
+    val parameter: String?,
+    val className: String,
+    val passOuterClass: Boolean,
+    val searchInComments: Boolean,
+    val isSearchInNonJavaFiles: Boolean,
+    val packageName: String,
+    val isOpenInEditor: Boolean
 ) : Model<MoveKotlinDeclarationsProcessor> {
 
     private val innerClassDescriptor = innerClass.unsafeResolveToDescriptor(BodyResolveMode.FULL) as ClassDescriptor
@@ -183,7 +183,10 @@ internal class MoveKotlinNestedClassesToUpperLevelModel(
     }
 
     @Throws(ConfigurationException::class)
-    override fun computeModelResult(): MoveKotlinDeclarationsProcessor {
+    override fun computeModelResult() = computeModelResult(throwOnConflicts = false)
+
+    @Throws(ConfigurationException::class)
+    override fun computeModelResult(throwOnConflicts: Boolean): MoveKotlinDeclarationsProcessor {
 
         val moveTarget = getMoveTarget()
 
@@ -201,6 +204,6 @@ internal class MoveKotlinNestedClassesToUpperLevelModel(
             openInEditor = isOpenInEditor
         )
 
-        return MoveKotlinDeclarationsProcessor(moveDescriptor, Mover.Default)
+        return MoveKotlinDeclarationsProcessor(moveDescriptor, Mover.Default, throwOnConflicts)
     }
 }
