@@ -43,6 +43,7 @@ import org.jetbrains.kotlin.utils.LibraryUtils
 import java.io.File
 import java.util.*
 import javax.inject.Inject
+import kotlin.properties.Delegates
 
 const val KOTLIN_BUILD_DIR_NAME = "kotlin"
 const val USING_JVM_INCREMENTAL_COMPILATION_MESSAGE = "Using Kotlin/JVM incremental compilation"
@@ -120,7 +121,7 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments>() : AbstractKo
     }
 
     @get:Internal
-    internal lateinit var compilation: AbstractKotlinCompilation<*>
+    internal var compilation: AbstractKotlinCompilation<*> by Delegates.notNull()
 
     // avoid creating directory in getter: this can lead to failure in parallel build
     @get:LocalState
