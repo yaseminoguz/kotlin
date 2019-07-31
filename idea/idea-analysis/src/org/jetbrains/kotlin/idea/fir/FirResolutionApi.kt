@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.fir.scopes.impl.FirTopLevelDeclaredMemberScope
 import org.jetbrains.kotlin.fir.symbols.CallableId
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.types.FirErrorTypeRef
+import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -181,6 +182,10 @@ fun KtElement.getOrBuildFir(
             override fun visitReference(reference: FirReference) {}
 
             override fun visitErrorTypeRef(errorTypeRef: FirErrorTypeRef) {}
+
+            override fun visitUserTypeRef(userTypeRef: FirUserTypeRef) {
+                userTypeRef.acceptChildren(this)
+            }
         })
         var current: PsiElement? = psi
         while (current is KtElement) {
