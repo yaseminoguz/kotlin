@@ -36,7 +36,7 @@ data class SpecPlace(
 )
 
 class LinkedSpecTest(
-    private val specVersion: String,
+    val specVersion: String,
     testArea: TestArea,
     testType: TestType,
     val place: SpecPlace,

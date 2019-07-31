@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: constant-literals, real-literals -> paragraph 1 -> sentence 3
  * NUMBER: 2
  * DESCRIPTION: Real literals suffixed by f/F (the float suffix) with a many digits in a whole-number part and a fraction part.

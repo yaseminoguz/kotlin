@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: constant-literals, integer-literals, binary-integer-literals -> paragraph 1 -> sentence 1
  * NUMBER: 1
  * DESCRIPTION: Binary integer literals with valid digit symbols.

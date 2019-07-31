@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: constant-literals, real-literals -> paragraph 2 -> sentence 1
  * NUMBER: 2
  * DESCRIPTION: Real literals with a not allowed exponent mark at the beginning.

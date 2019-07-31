@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: constant-literals, real-literals -> paragraph 1 -> sentence 3
  * NUMBER: 2
  * DESCRIPTION: A float suffix in the real literals right after a several dots (possibly separated by digits).

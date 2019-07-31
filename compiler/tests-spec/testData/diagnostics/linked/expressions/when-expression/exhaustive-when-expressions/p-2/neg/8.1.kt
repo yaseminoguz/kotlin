@@ -4,7 +4,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: expressions, when-expression, exhaustive-when-expressions -> paragraph 2 -> sentence 8
  * NUMBER: 1
  * DESCRIPTION: Non-exhaustive when using nullable boolean values.

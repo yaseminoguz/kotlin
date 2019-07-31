@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: constant-literals, integer-literals, hexadecimal-integer-literals -> paragraph 1 -> sentence 2
  * NUMBER: 1
  * DESCRIPTION: Hexadecimal integer literals with underscore symbols in valid places.

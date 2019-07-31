@@ -3,7 +3,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: expressions, constant-literals, integer-literals, long-integer-literals -> paragraph 1 -> sentence 2
  * NUMBER: 2
  * DESCRIPTION: Type checking (comparison with invalid types) of various integer literals with long literal mark.

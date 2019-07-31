@@ -1,7 +1,7 @@
 /*
  * KOTLIN CODEGEN BOX SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: constant-literals, integer-literals, decimal-integer-literals -> paragraph 1 -> sentence 2
  * NUMBER: 1
  * DESCRIPTION: Sequences with decimal digit symbols separated by underscores.

@@ -8,14 +8,13 @@ package org.jetbrains.kotlin.spec.utils.spec
 import org.jsoup.nodes.Element
 import java.util.*
 
-typealias Location = Set<String>
-typealias SentencesByLocation = MutableMap<Location, MutableList<String>>
+typealias SentencesByLocation = MutableMap<String, MutableList<String>>
 
 object HtmlSpecSentencesMapBuilder {
     enum class SectionTag(val level: Int) { h1(1), h2(2), h3(3), h4(4), h5(5) }
 
-    private const val PARAGRAPH_SELECTORS = ".paragraph, dl, ul, ol"
-    private const val SECTION_SELECTORS = "h1, h2, h3, h4, h5"
+    private const val PARAGRAPH_SELECTORS = ".paragraph, ul, ol"
+    private const val SECTION_SELECTORS = "h2, h3, h4, h5"
 
     fun build(spec: Element): SentencesByLocation {
         var paragraphCounter = 0
@@ -35,7 +34,9 @@ object HtmlSpecSentencesMapBuilder {
                 }
                 element.`is`(PARAGRAPH_SELECTORS) -> paragraphCounter++
                 else -> {
-                    val sentenceLocation = currentSectionsPath.map { it.second }.toMutableSet().apply { add(paragraphCounter.toString()) }
+                    if (!element.parents().`is`(PARAGRAPH_SELECTORS)) return@forEach
+                    val sentenceLocation =
+                        currentSectionsPath.map { it.second }.toMutableSet().apply { add(paragraphCounter.toString()) }.joinToString()
                     sentencesByLocation.putIfAbsent(sentenceLocation, mutableListOf())
                     sentencesByLocation[sentenceLocation]!!.add(element.text())
                 }

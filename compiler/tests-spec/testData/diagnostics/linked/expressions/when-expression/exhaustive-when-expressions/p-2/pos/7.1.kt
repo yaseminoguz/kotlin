@@ -3,7 +3,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: expressions, when-expression, exhaustive-when-expressions -> paragraph 2 -> sentence 7
  * NUMBER: 1
  * DESCRIPTION: Exhaustive when using enum values.

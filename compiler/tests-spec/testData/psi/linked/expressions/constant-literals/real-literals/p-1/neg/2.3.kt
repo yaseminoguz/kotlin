@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: constant-literals, real-literals -> paragraph 1 -> sentence 2
  * NUMBER: 3
  * DESCRIPTION: Not allowed real literals with a whole-number part as a hexadecimal number and a fraction part as a binary number (or vice versa).

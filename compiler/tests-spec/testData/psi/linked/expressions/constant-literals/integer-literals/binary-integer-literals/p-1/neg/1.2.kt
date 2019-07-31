@@ -1,7 +1,7 @@
 /*
  * KOTLIN PSI SPEC TEST (NEGATIVE)
  *
- * SPEC VERSION: 0.1-85
+ * SPEC VERSION: 0.1-106
  * PLACE: constant-literals, integer-literals, binary-integer-literals -> paragraph 1 -> sentence 1
  * NUMBER: 2
  * DESCRIPTION: Binary integer literals with not allowed symbols.
