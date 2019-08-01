@@ -2,7 +2,7 @@
  * KOTLIN PSI SPEC TEST (POSITIVE)
  *
  * SPEC VERSION: 0.1-106
- * PLACE: constant-literals, real-literals -> paragraph 3 -> sentence 1
+ * PLACE: expressions, constant-literals, real-literals -> paragraph 3 -> sentence 1
  * NUMBER: 6
  * DESCRIPTION: Real literals with omitted a whole-number part, suffixed by f/F (float suffix) followed by an exponent mark without digits.
  */
