@@ -58,11 +58,14 @@ class FirResolveStateImpl(override val sessionProvider: FirSessionProvider) : Fi
     }
 }
 
-// TODO: caching
 object FirIdeResolveFactory {
+    private val stateCache = mutableMapOf<IdeaModuleInfo, FirResolveState>()
+
     fun initiate(psi: KtElement): FirResolveState {
-        val provider = FirProjectSessionProvider(psi.project)
-        return FirResolveStateImpl(provider)
+        return stateCache.getOrPut(psi.getModuleInfo()) {
+            val provider = FirProjectSessionProvider(psi.project)
+            FirResolveStateImpl(provider)
+        }
     }
 }
 
