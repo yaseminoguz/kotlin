@@ -42,3 +42,11 @@ val remoteRunTests by task<Test> {
         includeTests.forEach { includeTestsMatching(packagePrefix + it) }
     }
 }
+
+val specConsistencyTests by task<Test> {
+    workingDir = rootDir
+
+    filter {
+        includeTestsMatching("org.jetbrains.kotlin.spec.consistency.SpecTestsConsistencyTest")
+    }
+}
