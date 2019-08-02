@@ -14,6 +14,7 @@ import com.intellij.psi.*
 import com.intellij.refactoring.BaseRefactoringProcessor
 import com.intellij.refactoring.MoveDestination
 import com.intellij.refactoring.PackageWrapper
+import com.intellij.refactoring.RefactoringBundle
 import com.intellij.refactoring.move.MoveCallback
 import com.intellij.refactoring.move.moveClassesOrPackages.AutocreatingSingleSourceRootMoveDestination
 import com.intellij.refactoring.move.moveClassesOrPackages.MultipleRootsMoveDestination
@@ -23,13 +24,16 @@ import org.jetbrains.kotlin.idea.core.util.toPsiDirectory
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.kotlin.idea.refactoring.KotlinRefactoringBundle
 import org.jetbrains.kotlin.idea.refactoring.getOrCreateKotlinFile
+import org.jetbrains.kotlin.idea.refactoring.move.getOrCreateDirectory
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.*
 import org.jetbrains.kotlin.idea.refactoring.move.updatePackageDirective
+import org.jetbrains.kotlin.idea.util.application.executeCommand
 import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import java.io.File
+import kotlin.math.abs
 
 internal class MoveKotlinTopLevelDeclarationsModel(
     val project: Project,
@@ -135,27 +139,24 @@ internal class MoveKotlinTopLevelDeclarationsModel(
             return KotlinMoveTargetForExistingElement(jetFile)
         }
 
+
         val targetDirPath = targetFile.toPath().parent
         val projectBasePath = project.basePath ?: throw ConfigurationException("Can't move for current project")
         if (targetDirPath === null || !targetDirPath.startsWith(projectBasePath)) {
             throw ConfigurationException("Incorrect target path. Directory $targetDirPath does not belong to current project.")
         }
 
-        if (targetDirPath.toFile().toPsiDirectory(project) === null) {
-            try {
-                DirectoryUtil.mkdirs(PsiManager.getInstance(project), targetDirPath.toString())
-            } catch (e: IncorrectOperationException) {
-                throw ConfigurationException("Failed to create parent directory: $targetDirPath")
-            }
+        val absoluteTargetDirPath = targetDirPath.toFile().absolutePath
+        val psiDirectory: PsiDirectory
+        try {
+            psiDirectory = getOrCreateDirectory(absoluteTargetDirPath, project)
+        } catch (e: IncorrectOperationException) {
+            throw ConfigurationException("Failed to create parent directory: $absoluteTargetDirPath")
         }
-
-        val targetDir = targetDirPath.toFile()
-        val psiDirectory = targetDir.toPsiDirectory(project)
-            ?: throw ConfigurationException("No directory found for file: ${targetFile.path}")
 
         val targetPackageFqName = sourceFiles.singleOrNull()?.packageFqName
             ?: JavaDirectoryService.getInstance().getPackage(psiDirectory)?.let { FqName(it.qualifiedName) }
-            ?: throw ConfigurationException("Could not find package corresponding to ${targetDir.path}")
+            ?: throw ConfigurationException("Could not find package corresponding to $absoluteTargetDirPath")
 
         val finalTargetPackageFqName = targetPackageFqName.asString()
         return KotlinMoveTargetForDeferredFile(
@@ -216,7 +217,11 @@ internal class MoveKotlinTopLevelDeclarationsModel(
             if (filesExistingInTargetDir.isEmpty() ||
                 (filesExistingInTargetDir.size == 1 && sourceFiles.contains(filesExistingInTargetDir[0]))
             ) {
-                val targetDirectory = runWriteAction<PsiDirectory> { moveDestination.getTargetDirectory(sourceDirectory) }
+                val targetDirectory = project.executeCommand(RefactoringBundle.message("move.title"), null) {
+                    runWriteAction<PsiDirectory> {
+                        moveDestination.getTargetDirectory(sourceDirectory)
+                    }
+                }
 
                 sourceFiles.forEach { it.updatePackageDirective = isUpdatePackageDirective }
 

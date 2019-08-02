@@ -31,7 +31,6 @@ import com.intellij.refactoring.util.CommonRefactoringUtil
 import org.jetbrains.kotlin.asJava.unwrapped
 import org.jetbrains.kotlin.idea.core.getPackage
 import org.jetbrains.kotlin.idea.refactoring.canRefactor
-import org.jetbrains.kotlin.idea.refactoring.move.invokeMoveFilesOrDirectoriesRefactoring
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.ui.KotlinAwareMoveFilesOrDirectoriesDialog
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.ui.KotlinSelectNestedClassRefactoringDialog
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.ui.MoveKotlinNestedClassesDialog
@@ -85,14 +84,11 @@ private val defaultHandlerActions = object : MoveKotlinDeclarationsHandlerAction
         KotlinSelectNestedClassRefactoringDialog.chooseNestedClassRefactoring(nestedClass, targetContainer)
 
     override fun invokeKotlinAwareMoveFilesOrDirectoriesRefactoring(
-        project: Project, initialDirectory: PsiDirectory?, elements: Array<out PsiElement>, moveCallback: MoveCallback?
-    ) {
-        val dialog = KotlinAwareMoveFilesOrDirectoriesDialog(project, initialDirectory) {
-            invokeMoveFilesOrDirectoriesRefactoring(it, project, elements, initialDirectory, moveCallback)
-        }
-        dialog.setData(elements, initialDirectory, "refactoring.moveFile")
-        dialog.show()
-    }
+        project: Project,
+        initialDirectory: PsiDirectory?,
+        elements: Array<out PsiElement>,
+        moveCallback: MoveCallback?
+    ) = KotlinAwareMoveFilesOrDirectoriesDialog(project, initialDirectory, elements, moveCallback).show()
 }
 
 class MoveKotlinDeclarationsHandler internal constructor(private val handlerActions: MoveKotlinDeclarationsHandlerActions) :
