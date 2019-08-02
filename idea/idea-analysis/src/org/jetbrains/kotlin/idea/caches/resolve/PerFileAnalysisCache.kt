@@ -49,6 +49,7 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
     private val resolveSession = componentProvider.get<ResolveSession>()
     private val codeFragmentAnalyzer = componentProvider.get<CodeFragmentAnalyzer>()
     private val bodyResolveCache = componentProvider.get<BodyResolveCache>()
+    private val lazyTopDownAnalyzer = componentProvider.get<LazyTopDownAnalyzer>()
 
     private val cache = HashMap<PsiElement, AnalysisResult>()
 
@@ -107,7 +108,8 @@ internal class PerFileAnalysisCache(val file: KtFile, componentProvider: Compone
                 resolveSession,
                 codeFragmentAnalyzer,
                 bodyResolveCache,
-                analyzableElement
+                analyzableElement,
+                lazyTopDownAnalyzer
             )
         } catch (e: ProcessCanceledException) {
             throw e
@@ -171,7 +173,8 @@ private object KotlinResolveDataProvider {
         resolveSession: ResolveSession,
         codeFragmentAnalyzer: CodeFragmentAnalyzer,
         bodyResolveCache: BodyResolveCache,
-        analyzableElement: KtElement
+        analyzableElement: KtElement,
+        parentAnalyzer: LazyTopDownAnalyzer
     ): AnalysisResult {
         try {
             if (analyzableElement is KtCodeFragment) {
@@ -180,32 +183,40 @@ private object KotlinResolveDataProvider {
                 return AnalysisResult.success(bindingContext, moduleDescriptor)
             }
 
-            val trace = DelegatingBindingTrace(
-                resolveSession.bindingContext,
-                "Trace for resolution of " + analyzableElement,
-                allowSliceRewrite = true
-            )
+            val createNewTrace = false
 
-            val moduleInfo = analyzableElement.containingKtFile.getModuleInfo()
+            if (createNewTrace) {
+                val trace = DelegatingBindingTrace(
+                    resolveSession.bindingContext,
+                    "Trace for resolution of " + analyzableElement,
+                    allowSliceRewrite = true
+                )
 
-            // TODO: should return proper platform!
-            val targetPlatform = moduleInfo.platform ?: TargetPlatformDetector.getPlatform(analyzableElement.containingKtFile)
+                val moduleInfo = analyzableElement.containingKtFile.getModuleInfo()
 
-            val lazyTopDownAnalyzer = createContainerForLazyBodyResolve(
-                //TODO: should get ModuleContext
-                globalContext.withProject(project).withModule(moduleDescriptor),
-                resolveSession,
-                trace,
-                targetPlatform,
-                bodyResolveCache,
-                targetPlatform.findAnalyzerServices,
-                analyzableElement.languageVersionSettings,
-                IdeaModuleStructureOracle()
-            ).get<LazyTopDownAnalyzer>()
+                // TODO: should return proper platform!
+                val targetPlatform = moduleInfo.platform ?: TargetPlatformDetector.getPlatform(analyzableElement.containingKtFile)
 
-            lazyTopDownAnalyzer.analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, listOf(analyzableElement))
+                val lazyTopDownAnalyzer = createContainerForLazyBodyResolve(
+                    //TODO: should get ModuleContext
+                    globalContext.withProject(project).withModule(moduleDescriptor),
+                    resolveSession,
+                    trace,
+                    targetPlatform,
+                    bodyResolveCache,
+                    targetPlatform.findAnalyzerServices,
+                    analyzableElement.languageVersionSettings,
+                    IdeaModuleStructureOracle()
+                ).get<LazyTopDownAnalyzer>()
 
-            return AnalysisResult.success(trace.bindingContext, moduleDescriptor)
+                lazyTopDownAnalyzer.analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, listOf(analyzableElement))
+
+                return AnalysisResult.success(trace.bindingContext, moduleDescriptor)
+            } else {
+                parentAnalyzer.analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, listOf(analyzableElement))
+
+                return AnalysisResult.success(parentAnalyzer.trace.bindingContext, moduleDescriptor)
+            }
         } catch (e: ProcessCanceledException) {
             throw e
         } catch (e: IndexNotReadyException) {

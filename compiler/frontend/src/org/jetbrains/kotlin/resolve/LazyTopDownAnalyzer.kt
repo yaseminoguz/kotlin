@@ -36,7 +36,7 @@ import org.jetbrains.kotlin.resolve.lazy.descriptors.LazyClassDescriptor
 import java.util.*
 
 class LazyTopDownAnalyzer(
-    private val trace: BindingTrace,
+    val trace: BindingTrace,
     private val declarationResolver: DeclarationResolver,
     private val overrideResolver: OverrideResolver,
     private val overloadResolver: OverloadResolver,

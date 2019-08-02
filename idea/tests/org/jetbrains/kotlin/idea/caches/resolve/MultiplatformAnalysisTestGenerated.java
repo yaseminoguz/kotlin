@@ -79,6 +79,11 @@ public class MultiplatformAnalysisTestGenerated extends AbstractMultiplatformAna
         runTest("idea/testData/multiplatform/jsNameClash/");
     }
 
+    @TestMetadata("jsSpecificChecksInCommon")
+    public void testJsSpecificChecksInCommon() throws Exception {
+        runTest("idea/testData/multiplatform/jsSpecificChecksInCommon/");
+    }
+
     @TestMetadata("lambdas")
     public void testLambdas() throws Exception {
         runTest("idea/testData/multiplatform/lambdas/");
