@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.idea.stubindex.KotlinSourceFilterScope
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.kotlin.psi.KtClass
+import java.io.File
 import kotlin.random.Random
 
 internal fun <T> List<T>.randomElement(): T = this[Random.nextInt(0, this.size)]
@@ -40,7 +41,7 @@ internal fun Project.files(): List<VirtualFile> {
     return FileTypeIndex.getFiles(KotlinFileType.INSTANCE, scope).toList()
 }
 
-internal fun randomNullableString() = if (randomBoolean()) randomString() else null
+internal inline fun <T> randomNullability(body: () -> T) = randomFunctor(0.8F, body, { null })
 
 internal fun randomString() = RandomStringUtils.randomAlphanumeric(Random.nextInt(1, 10))
 
@@ -51,4 +52,76 @@ internal fun randomClassName(): String {
         if (count > 0) randomString() else null
     }
     return strings.joinToString(".")
+}
+
+inline fun randomAction(probability: Float, body: () -> Unit) {
+    if (Random.nextFloat() <= probability) {
+        body()
+    }
+}
+
+inline fun <T> randomFunctor(probability: Float, `then`: () -> T, otherwise: () -> T): T {
+    return if (Random.nextFloat() <= probability) {
+        then()
+    } else {
+        otherwise()
+    }
+}
+
+inline fun randomActionFiftyFifty(body: () -> Unit) {
+    if (Random.nextBoolean()) body()
+}
+
+
+private fun mutatePath(path: File): File {
+
+    randomAction(0.2F) {
+        return path
+    }
+
+    var file = path
+
+    repeat(Random.nextInt(2)) {
+        file = file.parentFile
+    }
+
+    repeat(Random.nextInt(2)) {
+        file = File(file, randomString())
+    }
+
+    return file
+}
+
+internal fun randomFileNameMutator(fileName: String, preferableExtension: String): String {
+
+    randomAction(0.2F) {
+        return fileName
+    }
+
+    val extension = randomFunctor(
+        0.8F,
+        then = { preferableExtension },
+        otherwise = { ".${randomString()}" }
+    )
+
+    return "${randomString()}$extension"
+}
+
+internal fun randomFilePathMutator(filePath: String, preferableExtension: String): String {
+    randomAction(0.2F) {
+        return filePath
+    }
+
+    val file = File(filePath)
+
+    val mutatedDirectory = mutatePath(file.parentFile)
+
+    return File(
+        mutatedDirectory,
+        randomFileNameMutator(file.name, preferableExtension)
+    ).absolutePath
+}
+
+internal fun randomDirectoryPathMutator(baseDirectory: String): String {
+    return mutatePath(File(baseDirectory)).absolutePath
 }

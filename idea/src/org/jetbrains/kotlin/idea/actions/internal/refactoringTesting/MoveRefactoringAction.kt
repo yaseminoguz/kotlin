@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.idea.actions.internal.refactoringTesting
 
 import com.intellij.ide.actions.OpenProjectFileChooserDescriptor
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileChooser.FileChooser
@@ -21,20 +22,23 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.cases.FileSystemChangesTracker
 import org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.cases.MoveRefactoringCase
+import org.jetbrains.kotlin.idea.core.util.toVirtualFile
 import java.io.File
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
-private const val WINDOW_TITLE: String = "Move refactoring testing"
-
 class MoveRefactoringAction : AnAction() {
+
+    companion object {
+        const val WINDOW_TITLE: String = "Move refactoring testing"
+        const val RECENT_SELECTED_PATH = "org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.RECENT_SELECTED_PATH"
+    }
 
     private val nestedRefactoring = MoveRefactoringCase()
 
     private var iteration = 0
-
     private var fails = 0
 
     private fun randomMoveAndCheck(
@@ -82,7 +86,8 @@ class MoveRefactoringAction : AnAction() {
                     fails++
                     resultsFile.appendText("${localRefactoringResult.caseData}\nWith exception\n${localRefactoringResult.message}\n\n")
                 }
-                is RandomMoveRefactoringResult.Failed -> { }
+                is RandomMoveRefactoringResult.Failed -> {
+                }
             }
 
         } finally {
@@ -110,8 +115,7 @@ class MoveRefactoringAction : AnAction() {
 
         val resultsFile = File(targetPath, "REFACTORING_TEST_RESULT-$stamp.txt")
         return try {
-            resultsFile.createNewFile()
-            resultsFile
+            resultsFile.apply { createNewFile() }
         } catch (e: IOException) {
             null
         }
@@ -125,28 +129,36 @@ class MoveRefactoringAction : AnAction() {
 
         val targetPath = OpenProjectFileChooserDescriptor(true).let { descriptor ->
             descriptor.title = "Select test result directory path"
-            FileChooser.chooseFiles(descriptor, project, null).firstOrNull()?.path
+            val preselected = PropertiesComponent.getInstance().getValue(RECENT_SELECTED_PATH)?.let {
+                File(it).toVirtualFile()
+            }
+            FileChooser.chooseFiles(descriptor, project, preselected).firstOrNull()?.path
         }
         if (targetPath === null) {
+            Messages.showErrorDialog(project, "The path must be selected", WINDOW_TITLE)
             return
         }
 
         val resultsFile = createFileIfNotExist(targetPath)
         if (resultsFile === null) {
-            Messages.showMessageDialog(project, "Cannot get or create results file", WINDOW_TITLE, null)
+            Messages.showErrorDialog(project, "Cannot get or create results file", WINDOW_TITLE)
             return
         }
 
+        PropertiesComponent.getInstance().setValue(RECENT_SELECTED_PATH, targetPath)
+
         ProgressManager.getInstance().run(object : Task.Modal(project, WINDOW_TITLE, true) {
             override fun run(indicator: ProgressIndicator) {
+                val compilationStatusTracker = CompilationStatusTracker(project)
+                val fileSystemChangesTracker = FileSystemChangesTracker(project)
                 while (!indicator.isCanceled) {
                     iteration++
                     randomMoveAndCheck(
                         project,
                         projectRoot,
                         indicator,
-                        CompilationStatusTracker(project),
-                        FileSystemChangesTracker(project),
+                        compilationStatusTracker,
+                        fileSystemChangesTracker,
                         resultsFile
                     )
                 }

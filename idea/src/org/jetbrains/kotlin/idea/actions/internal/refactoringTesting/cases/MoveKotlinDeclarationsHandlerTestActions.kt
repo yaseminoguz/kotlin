@@ -9,12 +9,16 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileSystemItem
 import com.intellij.refactoring.move.MoveCallback
+import com.intellij.refactoring.move.MoveHandler
 import org.jetbrains.kotlin.idea.refactoring.fqName.getKotlinFqName
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.MoveKotlinDeclarationsHandlerActions
+import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.ui.KotlinAwareMoveFilesOrDirectoriesModel
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.ui.MoveKotlinNestedClassesModel
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.ui.MoveKotlinNestedClassesToUpperLevelModel
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.ui.MoveKotlinTopLevelDeclarationsModel
+import org.jetbrains.kotlin.idea.util.application.executeCommand
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 
@@ -63,6 +67,14 @@ internal class MoveKotlinDeclarationsHandlerTestActions(private val caseDataKeep
                 "isFullFileMove = $isFullFileMove"
     }
 
+    private fun KotlinAwareMoveFilesOrDirectoriesModel.testDataString(): String {
+        return "KotlinAwareMoveFilesOrDirectoriesModel:\n" +
+                "elementsToMove = ${elementsToMove.joinToString { if (it is PsiFileSystemItem) it.virtualFile.path else it.javaClass.name }}\n" +
+                "directoryName = $targetDirectoryName\n" +
+                "updatePackageDirective = $updatePackageDirective\n" +
+                "searchReferences = $searchReferences"
+    }
+
     private fun doWithMoveKotlinNestedClassesModel(nestedClass: KtClassOrObject, targetContainer: PsiElement?) {
 
         val containingClassOrObject = nestedClass.containingClassOrObject!!
@@ -104,7 +116,7 @@ internal class MoveKotlinDeclarationsHandlerTestActions(private val caseDataKeep
             nestedClass.project,
             nestedClass,
             newTarget,
-            randomNullableString(),
+            randomNullability { randomString() },
             randomClassName(),
             randomBoolean(),
             randomBoolean(),
@@ -142,14 +154,18 @@ internal class MoveKotlinDeclarationsHandlerTestActions(private val caseDataKeep
         repeat(elementsToMove.size) {
             selectedElementsToMove.add(elementsToMove.random())
         }
+        val targetFilePath = targetFile?.virtualFile?.path
+            ?: selectedElementsToMove.firstOrNull()?.containingKtFile?.virtualFile?.path ?: throw NotImplementedError()
+
+        val mutatedPath = randomFilePathMutator(targetFilePath, ".kt")
 
         val model = MoveKotlinTopLevelDeclarationsModel(
             project,
             selectedElementsToMove.toList(),
-            if (randomBoolean()) targetPackageName else randomClassName(),
-            if (randomBoolean()) targetDirectory else null,
-            randomString() + ".kt",
-            targetFile?.virtualFile?.path ?: randomString(),
+            randomFunctor(0.5F, { targetPackageName }, { randomClassName() }),
+            randomNullability { targetDirectory },
+            randomFileNameMutator("hello.kt", ".kt"),
+            mutatedPath,
             randomBoolean(),
             randomBoolean(),
             randomBoolean(),
@@ -186,5 +202,25 @@ internal class MoveKotlinDeclarationsHandlerTestActions(private val caseDataKeep
         initialDirectory: PsiDirectory?,
         elements: Array<out PsiElement>,
         moveCallback: MoveCallback?
-    ) = throw NotImplementedError()
+    ) {
+        val targetPath = initialDirectory?.virtualFile?.path ?: elements.firstOrNull()?.containingFile?.virtualFile?.path
+        if (targetPath === null) {
+            throw NotImplementedError()
+        }
+
+        val model = KotlinAwareMoveFilesOrDirectoriesModel(
+            project,
+            elements.toList(),
+            randomDirectoryPathMutator(targetPath),
+            randomBoolean(),
+            randomBoolean(),
+            null
+        )
+
+        caseDataKeeper.caseData = model.testDataString()
+
+        project.executeCommand(MoveHandler.REFACTORING_NAME) {
+            model.computeModelResult().run()
+        }
+    }
 }
