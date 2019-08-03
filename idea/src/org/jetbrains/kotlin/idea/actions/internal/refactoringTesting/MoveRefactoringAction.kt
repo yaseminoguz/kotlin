@@ -20,9 +20,9 @@ import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.cases.FileSystemChangesTracker
 import org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.cases.MoveRefactoringCase
 import org.jetbrains.kotlin.idea.core.util.toVirtualFile
+import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import java.io.File
 import java.io.IOException
 import java.time.Instant
@@ -95,7 +95,15 @@ class MoveRefactoringAction : AnAction() {
             indicator.fraction = 0.9
 
             fileTracker.createdFiles.toList().map {
-                if (it.exists()) it.delete(null)
+                try {
+                    edtExecute {
+                        runWriteAction {
+                            if (it.exists()) it.delete(null)
+                        }
+                    }
+                } catch (e: IOException) {
+                    //pass
+                }
             }
 
             gitReset(project, projectRoot)
@@ -162,6 +170,7 @@ class MoveRefactoringAction : AnAction() {
                         resultsFile
                     )
                 }
+                fileSystemChangesTracker.dispose()
             }
         })
     }

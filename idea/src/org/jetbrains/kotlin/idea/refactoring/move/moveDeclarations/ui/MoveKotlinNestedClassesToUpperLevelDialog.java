@@ -12,10 +12,8 @@ import com.intellij.psi.PsiElement;
 import com.intellij.refactoring.HelpID;
 import com.intellij.refactoring.RefactoringBundle;
 import com.intellij.refactoring.move.MoveDialogBase;
-import com.intellij.refactoring.move.moveInner.MoveInnerImpl;
 import com.intellij.refactoring.ui.NameSuggestionsField;
 import com.intellij.refactoring.ui.PackageNameReferenceEditorCombo;
-import com.intellij.refactoring.util.CommonRefactoringUtil;
 import com.intellij.ui.EditorTextField;
 import com.intellij.util.ArrayUtil;
 import kotlin.jvm.functions.Function1;
@@ -116,7 +114,7 @@ public class MoveKotlinNestedClassesToUpperLevelDialog extends MoveDialogBase {
 
     @Nullable
     private FqName getTargetPackageFqName() {
-        return MoveRefactoringUtilsKt.getTargetPackageFqName(targetContainer);
+        return MoveUtilsKt.getTargetPackageFqName(targetContainer);
     }
 
     @NotNull
@@ -225,7 +223,7 @@ public class MoveKotlinNestedClassesToUpperLevelDialog extends MoveDialogBase {
             processor = getModel().computeModelResult();
         }
         catch (ConfigurationException e) {
-            CommonRefactoringUtil.showErrorMessage(MoveInnerImpl.REFACTORING_NAME, e.getMessage(), HelpID.MOVE_INNER_UPPER, project);
+            setErrorText(e.getMessage());
             return;
         }
 

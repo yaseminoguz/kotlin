@@ -184,7 +184,7 @@ class KotlinAwareMoveFilesOrDirectoriesDialog(
         try {
             processor = getModel().computeModelResult()
         } catch (e: ConfigurationException) {
-            CommonRefactoringUtil.showErrorMessage(title, e.message, HELP_ID, project)
+            setErrorText(e.message)
             return
         }
 

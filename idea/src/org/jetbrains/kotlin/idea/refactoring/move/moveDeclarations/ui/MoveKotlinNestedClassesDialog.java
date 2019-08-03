@@ -15,15 +15,12 @@ import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.refactoring.HelpID;
 import com.intellij.refactoring.RefactoringBundle;
 import com.intellij.refactoring.classMembers.AbstractMemberInfoModel;
 import com.intellij.refactoring.classMembers.MemberInfoChange;
 import com.intellij.refactoring.move.MoveCallback;
 import com.intellij.refactoring.move.MoveHandler;
-import com.intellij.refactoring.move.moveInner.MoveInnerImpl;
 import com.intellij.refactoring.ui.RefactoringDialog;
-import com.intellij.refactoring.util.CommonRefactoringUtil;
 import kotlin.collections.CollectionsKt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -40,7 +37,6 @@ import org.jetbrains.kotlin.idea.refactoring.memberInfo.KotlinMemberSelectionTab
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.*;
 import org.jetbrains.kotlin.idea.refactoring.ui.KotlinTypeReferenceEditorComboWithBrowseButton;
 import org.jetbrains.kotlin.psi.*;
-
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.awt.*;
@@ -84,6 +80,8 @@ public class MoveKotlinNestedClassesDialog extends RefactoringDialog {
         initMemberInfo(elementsToMove);
 
         validateButtons();
+
+        myHelpAction.setEnabled(false);
     }
 
     private void initClassChooser(@NotNull KtClassOrObject initialTargetClass) {
@@ -229,12 +227,6 @@ public class MoveKotlinNestedClassesDialog extends RefactoringDialog {
                 moveCallback);
     }
 
-
-    @Override
-    protected void canRun() throws ConfigurationException {
-        getModel().assertModel();
-    }
-
     @Override
     protected void doAction() {
 
@@ -243,7 +235,7 @@ public class MoveKotlinNestedClassesDialog extends RefactoringDialog {
             processor = getModel().computeModelResult();
         }
         catch (ConfigurationException e) {
-            CommonRefactoringUtil.showErrorMessage(MoveInnerImpl.REFACTORING_NAME, e.getMessage(), HelpID.MOVE_INNER_UPPER, myProject);
+            setErrorText(e.getMessage());
             return;
         }
 

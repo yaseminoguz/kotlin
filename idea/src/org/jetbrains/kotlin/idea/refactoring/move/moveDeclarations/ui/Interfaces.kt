@@ -13,7 +13,4 @@ internal interface Model<out T> {
 
     @Throws(ConfigurationException::class)
     fun computeModelResult(): T
-
-    @Throws(ConfigurationException::class)
-    fun assertModel()
 }

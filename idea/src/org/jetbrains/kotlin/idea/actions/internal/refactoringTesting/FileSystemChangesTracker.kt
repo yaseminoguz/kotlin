@@ -3,14 +3,18 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.idea.actions.internal.refactoringTesting.cases
+package org.jetbrains.kotlin.idea.actions.internal.refactoringTesting
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.*
 
-internal class FileSystemChangesTracker(project: Project) {
+internal class FileSystemChangesTracker(project: Project) : Disposable {
+
+    override fun dispose() {
+        trackerListener.dispose()
+    }
 
     private val trackerListener = object : VirtualFileListener, Disposable {
 
@@ -29,6 +33,7 @@ internal class FileSystemChangesTracker(project: Project) {
             if (!disposed) {
                 disposed = true
                 VirtualFileManager.getInstance().removeVirtualFileListener(this)
+                createdFilesMutable.clear()
             }
         }
 

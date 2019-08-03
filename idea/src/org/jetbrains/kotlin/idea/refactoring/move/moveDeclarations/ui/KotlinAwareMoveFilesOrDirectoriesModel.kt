@@ -20,8 +20,9 @@ import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.KotlinAwareMo
 import org.jetbrains.kotlin.idea.refactoring.move.updatePackageDirective
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
-import java.io.File
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
+import java.nio.file.Paths
 
 class KotlinAwareMoveFilesOrDirectoriesModel(
     val project: Project,
@@ -33,14 +34,6 @@ class KotlinAwareMoveFilesOrDirectoriesModel(
 ) : Model<KotlinAwareMoveFilesOrDirectoriesProcessor> {
 
     private fun checkedGetElementsToMove(selectedDirectory: PsiDirectory): List<PsiElement> {
-
-        elementsToMove.firstOrNull { it !is PsiFile && it !is PsiDirectory }?.let {
-            throw ConfigurationException("Unexpected element type: $it")
-        }
-
-        if (elementsToMove.isEmpty()) {
-            throw ConfigurationException("There is no given files to move")
-        }
 
         val preparedElementsToMove = elementsToMove
             .filterNot { it is PsiFile && it.containingDirectory == selectedDirectory }
@@ -67,19 +60,7 @@ class KotlinAwareMoveFilesOrDirectoriesModel(
         return preparedElementsToMove
     }
 
-    private fun assertDumpStatus() {
-        if (DumbService.isDumb(project)) {
-            throw ConfigurationException("Move refactoring is not available while indexing is in progress")
-        }
-    }
-
     private fun checkedGetTargetDirectory(): PsiDirectory {
-        val targetDirPath = File(targetDirectoryName).toPath()
-        val projectBasePath = project.basePath ?: throw ConfigurationException("Can't move for current project")
-        if (!targetDirPath.startsWith(projectBasePath)) {
-            throw ConfigurationException("Incorrect target path. Directory $targetDirectoryName does not belong to current project.")
-        }
-
         try {
             return getOrCreateDirectory(targetDirectoryName, project)
         } catch (e: IncorrectOperationException) {
@@ -90,16 +71,31 @@ class KotlinAwareMoveFilesOrDirectoriesModel(
     @Throws(ConfigurationException::class)
     override fun computeModelResult() = computeModelResult(throwOnConflicts = false)
 
-    @Throws(ConfigurationException::class)
-    override fun assertModel() {
-        assertDumpStatus()
-        checkedGetElementsToMove(checkedGetTargetDirectory())
+    private fun checkModel() {
+
+        elementsToMove.firstOrNull { it !is PsiFile && it !is PsiDirectory }?.let {
+            throw ConfigurationException("Unexpected element type: $it")
+        }
+
+        if (elementsToMove.isEmpty()) {
+            throw ConfigurationException("There is no given files to move")
+        }
+
+        try {
+            Paths.get(targetDirectoryName)
+        } catch (e: InvalidPathException) {
+            throw ConfigurationException("Invalid target path $targetDirectoryName")
+        }
+
+        if (DumbService.isDumb(project)) {
+            throw ConfigurationException("Move refactoring is not available while indexing is in progress")
+        }
     }
 
     @Throws(ConfigurationException::class)
     override fun computeModelResult(throwOnConflicts: Boolean): KotlinAwareMoveFilesOrDirectoriesProcessor {
 
-        assertDumpStatus()
+        checkModel()
 
         val selectedDir = checkedGetTargetDirectory()
 

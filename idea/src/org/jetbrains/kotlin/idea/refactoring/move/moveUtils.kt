@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.idea.caches.resolve.analyzeWithContent
 import org.jetbrains.kotlin.idea.caches.resolve.unsafeResolveToDescriptor
 import org.jetbrains.kotlin.idea.codeInsight.DescriptorToSourceUtilsIde
 import org.jetbrains.kotlin.idea.codeInsight.shorten.addDelayedImportRequest
+import org.jetbrains.kotlin.idea.core.getPackage
 import org.jetbrains.kotlin.idea.core.util.toPsiDirectory
 import org.jetbrains.kotlin.idea.imports.importableFqName
 import org.jetbrains.kotlin.idea.refactoring.fqName.isImported
@@ -661,4 +662,12 @@ internal fun getOrCreateDirectory(path: String, project: Project): PsiDirectory 
             DirectoryUtil.mkdirs(PsiManager.getInstance(project), fixUpSeparators)
         }
     }
+}
+
+internal fun getTargetPackageFqName(targetContainer: PsiElement): FqName? {
+    if (targetContainer is PsiDirectory) {
+        val targetPackage = targetContainer.getPackage()
+        return if (targetPackage != null) FqName(targetPackage.qualifiedName) else null
+    }
+    return if (targetContainer is KtFile) targetContainer.packageFqName else null
 }

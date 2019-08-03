@@ -5,7 +5,6 @@
 
 package org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.ui
 
-import com.intellij.ide.util.DirectoryUtil
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -20,7 +19,6 @@ import com.intellij.refactoring.move.moveClassesOrPackages.AutocreatingSingleSou
 import com.intellij.refactoring.move.moveClassesOrPackages.MultipleRootsMoveDestination
 import com.intellij.util.IncorrectOperationException
 import org.jetbrains.kotlin.idea.KotlinFileType
-import org.jetbrains.kotlin.idea.core.util.toPsiDirectory
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.kotlin.idea.refactoring.KotlinRefactoringBundle
 import org.jetbrains.kotlin.idea.refactoring.getOrCreateKotlinFile
@@ -33,7 +31,8 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import java.io.File
-import kotlin.math.abs
+import java.nio.file.InvalidPathException
+import java.nio.file.Paths
 
 internal class MoveKotlinTopLevelDeclarationsModel(
     val project: Project,
@@ -128,6 +127,12 @@ internal class MoveKotlinTopLevelDeclarationsModel(
 
     private fun selectMoveTargetToFile(): KotlinMoveTarget {
 
+        try {
+            Paths.get(targetFilePath)
+        } catch (e: InvalidPathException) {
+            throw ConfigurationException("Invalid target path $targetFilePath")
+        }
+
         val targetFile = File(targetFilePath)
         checkTargetFileName(targetFile.name)
 
@@ -139,14 +144,13 @@ internal class MoveKotlinTopLevelDeclarationsModel(
             return KotlinMoveTargetForExistingElement(jetFile)
         }
 
-
         val targetDirPath = targetFile.toPath().parent
         val projectBasePath = project.basePath ?: throw ConfigurationException("Can't move for current project")
         if (targetDirPath === null || !targetDirPath.startsWith(projectBasePath)) {
             throw ConfigurationException("Incorrect target path. Directory $targetDirPath does not belong to current project.")
         }
 
-        val absoluteTargetDirPath = targetDirPath.toFile().absolutePath
+        val absoluteTargetDirPath = targetDirPath.toString()
         val psiDirectory: PsiDirectory
         try {
             psiDirectory = getOrCreateDirectory(absoluteTargetDirPath, project)
@@ -194,9 +198,6 @@ internal class MoveKotlinTopLevelDeclarationsModel(
     }
 
     private val verifiedMoveTarget get() = selectMoveTarget().also { verifyBeforeRun(it) }
-
-    @Throws(ConfigurationException::class)
-    override fun assertModel(): Unit = run { verifiedMoveTarget }
 
     @Throws(ConfigurationException::class)
     override fun computeModelResult() = computeModelResult(throwOnConflicts = false)

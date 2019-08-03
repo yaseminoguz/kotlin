@@ -325,6 +325,7 @@ public class MoveKotlinTopLevelDeclarationsDialog extends RefactoringDialog {
         updatePackageDirectiveCheckBox();
         UIUtil.setEnabled(targetPanel, moveToPackage && hasAnySourceRoots(), true);
         updateSuggestedFileName();
+        myHelpAction.setEnabled(false);
     }
 
     private boolean isFullFileMove() {
@@ -385,11 +386,6 @@ public class MoveKotlinTopLevelDeclarationsDialog extends RefactoringDialog {
         return elementsToMove;
     }
 
-    @Override
-    protected void canRun() throws ConfigurationException {
-        getModel().assertModel();
-    }
-
     private Model<BaseRefactoringProcessor> getModel() throws ConfigurationException  {
 
         DirectoryChooser.ItemWrapper selectedItem = (DirectoryChooser.ItemWrapper) destinationFolderCB.getComboBox().getSelectedItem();
@@ -421,7 +417,7 @@ public class MoveKotlinTopLevelDeclarationsDialog extends RefactoringDialog {
             processor = getModel().computeModelResult();
         }
         catch (ConfigurationException e) {
-            CommonRefactoringUtil.showErrorMessage(RefactoringBundle.message("error.title"), e.getMessage(), null, myProject);
+            setErrorText(e.getMessage());
             return;
         }
 

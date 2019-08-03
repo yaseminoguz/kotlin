@@ -5,7 +5,7 @@
 
 package org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.ui
 
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.caches.resolve.unsafeResolveToDescriptor
 import org.jetbrains.kotlin.idea.core.KotlinNameSuggester
 import org.jetbrains.kotlin.idea.refactoring.createKotlinFile
+import org.jetbrains.kotlin.idea.refactoring.move.getTargetPackageFqName
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.*
 import org.jetbrains.kotlin.idea.roots.getSuitableDestinationSourceRoots
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
@@ -61,39 +62,37 @@ internal class MoveKotlinNestedClassesToUpperLevelModel(
 
                 val contentSourceRoots = getSuitableDestinationSourceRoots(project)
                 val newPackage = PackageWrapper(PsiManager.getInstance(project), targetName)
-                val targetSourceRoot: VirtualFile
 
+                val targetSourceRoot: VirtualFile
                 if (contentSourceRoots.size > 1) {
+                    val oldPackage = oldPackageFqName?.let {
+                        JavaPsiFacade.getInstance(project).findPackage(it.asString())
+                    }
+
                     var initialDir: PsiDirectory? = null
-                    val oldPackage = if (oldPackageFqName != null)
-                        JavaPsiFacade.getInstance(project).findPackage(oldPackageFqName.asString())
-                    else
-                        null
                     if (oldPackage != null) {
-                        val directories = oldPackage.directories
                         val root = projectRootManager.fileIndex.getContentRootForFile(target.virtualFile)
-                        for (dir in directories) {
-                            if (Comparing.equal(projectRootManager.fileIndex.getContentRootForFile(dir.virtualFile), root)) {
-                                initialDir = dir
-                            }
+                        initialDir = oldPackage.directories.firstOrNull {
+                            Comparing.equal(projectRootManager.fileIndex.getContentRootForFile(it.virtualFile), root)
                         }
                     }
-                    val sourceRoot = MoveClassesOrPackagesUtil.chooseSourceRoot(newPackage, contentSourceRoots, initialDir) ?: return null
-                    targetSourceRoot = sourceRoot
+
+                    targetSourceRoot = MoveClassesOrPackagesUtil.chooseSourceRoot(newPackage, contentSourceRoots, initialDir) ?: return null
                 } else {
                     targetSourceRoot = contentSourceRoots[0]
                 }
-                var dir = RefactoringUtil.findPackageDirectoryInSourceRoot(newPackage, targetSourceRoot);
-                if (dir == null) {
-                    ApplicationManager.getApplication().runWriteAction {
+
+                var directory = RefactoringUtil.findPackageDirectoryInSourceRoot(newPackage, targetSourceRoot);
+                if (directory === null) {
+                    runWriteAction {
                         try {
-                            dir = RefactoringUtil.createPackageDirectoryInSourceRoot(newPackage, targetSourceRoot)
+                            directory = RefactoringUtil.createPackageDirectoryInSourceRoot(newPackage, targetSourceRoot)
                         } catch (e: IncorrectOperationException) {
-                            dir = null;
+                            directory = null;
                         }
                     }
                 }
-                return dir;
+                return directory;
             }
 
             return target
@@ -134,8 +133,8 @@ internal class MoveKotlinNestedClassesToUpperLevelModel(
         }
 
         if (targetContainer is PsiDirectory || targetContainer is KtFile) {
-            val targetPackageFqName = getTargetPackageFqName(target) ?: throw ConfigurationException("No package corresponds to this directory")
-
+            val targetPackageFqName = getTargetPackageFqName(target)
+                ?: throw ConfigurationException("No package corresponds to this directory")
 
             val existingClass = DescriptorUtils
                 .getContainingModule(innerClassDescriptor)
@@ -160,7 +159,8 @@ internal class MoveKotlinNestedClassesToUpperLevelModel(
         if (target is PsiDirectory) {
             val targetDir = target
 
-            val targetPackageFqName = getTargetPackageFqName(target) ?: throw ConfigurationException("Cannot find target package name")
+            val targetPackageFqName = getTargetPackageFqName(target)
+                ?: throw ConfigurationException("Cannot find target package name")
 
             val suggestedName = KotlinNameSuggester.suggestNameByName(className) {
                 targetDir.findFile(it + "." + KotlinFileType.EXTENSION) == null
@@ -175,11 +175,6 @@ internal class MoveKotlinNestedClassesToUpperLevelModel(
         } else {
             return KotlinMoveTargetForExistingElement(target as KtElement)
         }
-    }
-
-    @Throws(ConfigurationException::class)
-    override fun assertModel() {
-        getMoveTarget()
     }
 
     @Throws(ConfigurationException::class)

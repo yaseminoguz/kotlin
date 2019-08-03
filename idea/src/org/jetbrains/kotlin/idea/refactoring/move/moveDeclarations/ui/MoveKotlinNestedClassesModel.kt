@@ -11,7 +11,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.RefactoringBundle
 import com.intellij.refactoring.move.MoveCallback
-import org.jetbrains.kotlin.idea.refactoring.fqName.getKotlinFqName
 import org.jetbrains.kotlin.idea.refactoring.move.moveDeclarations.*
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
@@ -38,16 +37,11 @@ internal class MoveKotlinNestedClassesModel(
 
         for (classOrObject in selectedElementsToMove) {
             if (PsiTreeUtil.isAncestor(classOrObject, targetClass, false)) {
-                throw ConfigurationException("Cannot move nested class " + classOrObject.getName() + " to itself")
+                throw ConfigurationException("Cannot move nested class ${classOrObject.name} to itself")
             }
         }
 
         return targetClass
-    }
-
-    @Throws(ConfigurationException::class)
-    override fun assertModel() {
-        getCheckedTargetClass()
     }
 
     @Throws(ConfigurationException::class)
