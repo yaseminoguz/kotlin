@@ -24,7 +24,7 @@ private const val INLINE_CLASS_IMPL_SUFFIX = "-impl"
 
 // TODO: Support incremental compilation
 class InlineClassLowering(val context: BackendContext) {
-    private val transformedFunction = mutableMapOf<IrFunctionSymbol, IrSimpleFunctionSymbol>()
+    private val transformedFunction = context.transformedFunction
 
     val inlineClassDeclarationLowering = object : ClassLoweringPass {
         override fun lower(irClass: IrClass) {

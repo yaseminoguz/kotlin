@@ -118,6 +118,7 @@ class IrModuleToJsTransformer(
         return JsExpressionStatement(expression)
     }
 
+    var namer: NameTables? = null
     private fun generateScriptModule(module: IrModuleFragment): JsProgram {
         val additionalPackages = with(backendContext) {
             externalPackageFragment.values + listOf(
@@ -126,12 +127,20 @@ class IrModuleToJsTransformer(
             ) + packageLevelJsModules
         }
 
-        val namer = NameTables(module.files + additionalPackages)
+        if (namer == null) {
+            namer = NameTables(module.files + additionalPackages)
+        } else {
+            namer!!.merge(module.files)
+        }
+
+        val name = namer!!.globalNames.findFreshName("evaluateScript")
+        namer!!.globalNames.reserved.add(name)
+        IrDeclarationToJsTransformer.evalFunctionName = name
 
         val program = JsProgram()
 
         val nameGenerator = IrNamerImpl(
-            newNameTables = namer
+            newNameTables = namer!!
         )
         val staticContext = JsStaticContext(
             backendContext = backendContext,

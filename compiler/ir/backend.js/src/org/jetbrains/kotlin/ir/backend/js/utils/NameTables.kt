@@ -23,7 +23,7 @@ import org.jetbrains.kotlin.utils.addToStdlib.ifNotEmpty
 
 class NameTable<T>(
     val parent: NameTable<T>? = null,
-    private val reserved: MutableSet<String> = mutableSetOf()
+    var reserved: MutableSet<String> = mutableSetOf()
 ) {
     var finished = false
     val names = mutableMapOf<T, String>()
@@ -35,6 +35,11 @@ class NameTable<T>(
     }
 
     fun declareStableName(declaration: T, name: String) {
+        val previous = names[declaration]
+        if (declaration !is ParameterTypeBasedSignature && declaration in names && previous != name) {
+            return
+        }
+
         if (parent != null) assert(parent.finished)
         assert(!finished)
         names[declaration] = name
@@ -46,7 +51,7 @@ class NameTable<T>(
         declareStableName(declaration, freshName)
     }
 
-    private fun findFreshName(suggestedName: String): String {
+    fun findFreshName(suggestedName: String): String {
         if (!isReserved(suggestedName))
             return suggestedName
 
@@ -132,8 +137,12 @@ fun functionSignature(declaration: IrFunction): Signature {
     return ParameterTypeBasedSignature(signature, declarationName)
 }
 
-class NameTables(packages: List<IrPackageFragment>) {
-    private val globalNames: NameTable<IrDeclaration>
+class NameTables(
+    packages: List<IrPackageFragment>,
+    reservedForGlobal: MutableSet<String> = mutableSetOf(),
+    reservedForMember: MutableSet<String> = mutableSetOf()
+) {
+    val globalNames: NameTable<IrDeclaration>
     private val memberNames: NameTable<Signature>
     private val localNames = mutableMapOf<IrDeclaration, NameTable<IrDeclaration>>()
     private val loopNames = mutableMapOf<IrLoop, String>()
@@ -143,20 +152,63 @@ class NameTables(packages: List<IrPackageFragment>) {
         packages.forEach { it.acceptChildrenVoid(stableNamesCollector) }
 
         globalNames = NameTable(reserved = stableNamesCollector.staticNames)
+        globalNames.reserved.addAll(reservedForGlobal)
         memberNames = NameTable(reserved = stableNamesCollector.memberNames)
+        memberNames.reserved.addAll(reservedForMember)
 
+        val classDeclaration = mutableListOf<IrClass>()
         for (p in packages) {
             for (declaration in p.declarations) {
                 generateNamesForTopLevelDecl(declaration)
                 if (declaration is IrScript) {
                     for (memberDecl in declaration.declarations) {
                         generateNamesForTopLevelDecl(memberDecl)
+                        if (memberDecl is IrClass) {
+                            classDeclaration += memberDecl
+                        }
                     }
                 }
             }
         }
 
         globalNames.finished = true
+
+        for (declaration in classDeclaration) {
+            val localNameGenerator = LocalNameGenerator(declaration)
+
+            if (declaration.isEffectivelyExternal()) {
+                declaration.acceptChildrenVoid(object : IrElementVisitorVoid {
+                    override fun visitElement(element: IrElement) {
+                        element.acceptChildrenVoid(this)
+                    }
+
+                    override fun visitSimpleFunction(declaration: IrSimpleFunction) {
+                        val parent = declaration.parent
+                        if (parent is IrClass && !parent.isEnumClass) {
+                            generateNameForMemberFunction(declaration)
+                        }
+                    }
+
+                    override fun visitField(declaration: IrField) {
+                        val parent = declaration.parent
+                        if (parent is IrClass && !parent.isEnumClass) {
+                            generateNameForMemberField(declaration)
+                        }
+                    }
+                })
+            } else {
+                declaration.thisReceiver!!.acceptVoid(localNameGenerator)
+                for (memberDecl in declaration.declarations) {
+                    memberDecl.acceptChildrenVoid(LocalNameGenerator(memberDecl))
+                    when (memberDecl) {
+                        is IrSimpleFunction ->
+                            generateNameForMemberFunction(memberDecl)
+                        is IrField ->
+                            generateNameForMemberField(memberDecl)
+                    }
+                }
+            }
+        }
 
         for (p in packages) {
             for (declaration in p.declarations) {
@@ -202,6 +254,22 @@ class NameTables(packages: List<IrPackageFragment>) {
         }
     }
 
+    private fun <T, K> MutableMap<T, K>.addAllIfAbsent(other: Map<T, K>) {
+        this += other.filter { it.key !in this }
+    }
+
+    fun merge(packages: List<IrPackageFragment>) {
+        val table = NameTables(packages, globalNames.reserved, memberNames.reserved)
+
+        globalNames.names.addAllIfAbsent(table.globalNames.names)
+        memberNames.names.addAllIfAbsent(table.memberNames.names)
+        localNames.addAllIfAbsent(table.localNames)
+        loopNames.addAllIfAbsent(table.loopNames)
+
+        globalNames.reserved = table.globalNames.reserved
+        memberNames.reserved = table.memberNames.reserved
+    }
+
     private fun generateNameForMemberField(field: IrField) {
         require(!field.isTopLevel)
         require(!field.isStatic)
@@ -215,6 +283,9 @@ class NameTables(packages: List<IrPackageFragment>) {
     }
 
     private fun generateNameForMemberFunction(declaration: IrSimpleFunction) {
+        if (declaration.getJsNameOrKotlinName().asString().contains("max")) {
+            print("")
+        }
         when (val signature = functionSignature(declaration)) {
             is StableNameSignature -> memberNames.declareStableName(signature, signature.name)
             is ParameterTypeBasedSignature -> {
@@ -260,9 +331,7 @@ class NameTables(packages: List<IrPackageFragment>) {
             parent = parent.parent
         }
 
-        return declaration.fqNameWhenAvailable!!.shortName().identifier
-
-//        error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
+        error("Can't find name for declaration ${declaration.fqNameWhenAvailable}")
     }
 
     fun getNameForMemberField(field: IrField): String {
