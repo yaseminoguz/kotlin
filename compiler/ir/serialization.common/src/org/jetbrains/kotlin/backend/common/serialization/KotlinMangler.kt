@@ -22,7 +22,7 @@ interface KotlinMangler {
     val Long.isSpecial: Boolean
 
     companion object {
-        private val FUNCTION_PREFIX = "BUILT_IN_FUNCTION\$"
+        private val FUNCTION_PREFIX = "<BUILT-IN-FUNCTION>"
         fun functionClassSymbolName(name: Name) = "ktype:$FUNCTION_PREFIX$name"
         fun functionInvokeSymbolName(name: Name) = "kfun:$FUNCTION_PREFIX$name.invoke"
     }
