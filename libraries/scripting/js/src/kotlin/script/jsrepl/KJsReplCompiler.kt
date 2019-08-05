@@ -107,7 +107,8 @@ class KJsReplCompiler(private val configuration: CompilerConfiguration, klib: Ko
             psi2irContext.symbolTable,
             irModuleFragment,
             emptySet(),
-            environment.configuration
+            environment.configuration,
+            true
         )
 
         val irFiles = sortDependencies(deserializedModuleFragments).flatMap { it.files } + irModuleFragment.files
