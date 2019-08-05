@@ -11,18 +11,17 @@ import org.jetbrains.kotlin.backend.common.phaser.invokeToplevel
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
 import org.jetbrains.kotlin.ir.backend.js.utils.JsMainFunctionDetector
+import org.jetbrains.kotlin.ir.backend.js.utils.NameTables
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
-import org.jetbrains.kotlin.js.config.JSConfigurationKeys
 import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi2ir.generators.GeneratorContext
-import org.jetbrains.kotlin.serialization.js.ModuleKind
 import org.jetbrains.kotlin.utils.DFS
 
-private fun sortDependencies(dependencies: Collection<IrModuleFragment>): Collection<IrModuleFragment> {
+fun sortDependencies(dependencies: Collection<IrModuleFragment>): Collection<IrModuleFragment> {
     val mapping = dependencies.map { it.descriptor to it }.toMap()
 
     return DFS.topologicalOrder(dependencies) { m ->
@@ -81,28 +80,16 @@ fun compile(
     return jsProgram.toString()
 }
 
-fun compileForRepl(configuration: CompilerConfiguration, psi2irContext: GeneratorContext, moduleFragment: IrModuleFragment): String {
-    configuration.put(JSConfigurationKeys.MODULE_KIND, ModuleKind.PLAIN)
-    val mainFunction = JsMainFunctionDetector.getMainFunctionOrNull(moduleFragment)
-
-    val context = JsIrBackendContext(
-        moduleFragment.descriptor,
-        psi2irContext.irBuiltIns,
-        psi2irContext.symbolTable,
-        moduleFragment,
-        emptySet(),
-        configuration
-    )
-
-    ExternalDependenciesGenerator(
-        moduleDescriptor = moduleFragment.descriptor,
-        symbolTable = psi2irContext.symbolTable,
-        irBuiltIns = psi2irContext.irBuiltIns
-    ).generateUnboundSymbolsAsDependencies()
-
+fun compileForRepl(
+    context: JsIrBackendContext,
+    mainFunction: IrSimpleFunction?,
+    moduleFragment: IrModuleFragment,
+    namer: NameTables? = null
+): Pair<NameTables, String> {
     jsPhases.invokeToplevel(PhaseConfig(jsPhases), context, moduleFragment)
 
-    val jsProgram =
-        moduleFragment.accept(IrModuleToJsTransformer(context, mainFunction, emptyList()).also { it.generateScriptModule = true }, null)
-    return jsProgram.toString()
+    val transformer = IrModuleToJsTransformer(context, mainFunction, emptyList()).also { it.generateScriptModule = true; it.namer = namer }
+    val jsProgram = moduleFragment.accept(transformer, null)
+
+    return Pair(transformer.namer!!, jsProgram.toString())
 }

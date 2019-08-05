@@ -56,16 +56,29 @@ class IrDeclarationToJsTransformer : BaseIrElementToJsNodeTransformer<JsStatemen
         }
         declarations += createEvaluateFunction(irScript.statements, context)
 
-        return JsBlock(declarations)
+        return JsGlobalBlock().also { it.statements += declarations }
     }
 
     companion object {
         var evalFunc: JsFunction? = null
+        var evalFunctionName: String = "evaluateScript"
         private var evaluateScriptFunctionCreated: Boolean = false
 
         fun getEvaluateScriptFunction(): JsFunction {
             Assert.check(evaluateScriptFunctionCreated)
             return evalFunc!!
+        }
+    }
+
+    private fun setReturnStatement(statements: MutableList<JsStatement>) {
+        if (statements.isNotEmpty()) {
+            when (val last = statements.last()) {
+                is JsExpressionStatement -> {
+                    val returnExpression = JsReturn(last.expression)
+                    statements[statements.size - 1] = returnExpression
+                }
+                is JsBlock -> setReturnStatement(last.statements)
+            }
         }
     }
 
@@ -83,12 +96,8 @@ class IrDeclarationToJsTransformer : BaseIrElementToJsNodeTransformer<JsStatemen
             "Evaluate script function"
         )
             .also {
-                it.name = JsName("evaluateScript", false)
-
-                if (it.body.statements.isNotEmpty()) {
-                    val returnExpression = JsReturn((it.body.statements.last() as JsExpressionStatement).expression)
-                    it.body.statements[it.body.statements.size - 1] = returnExpression
-                }
+                it.name = JsName(evalFunctionName, false)
+                setReturnStatement(it.body.statements)
             }
 
         evaluateScriptFunctionCreated = true
