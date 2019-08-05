@@ -90,8 +90,10 @@ open class SymbolTable : ReferenceSymbolTable {
             val s = get(d0)
             if (s == null) {
                 val new = orElse()
-                assert(unboundSymbols.add(new)) {
-                    "Symbol for ${new.descriptor} was already referenced"
+                if (!new.isBound) {
+                    assert(unboundSymbols.add(new)) {
+                        "Symbol for ${new.descriptor} was already referenced"
+                    }
                 }
                 set(d0, new)
                 return new
@@ -227,7 +229,7 @@ open class SymbolTable : ReferenceSymbolTable {
 
     fun declareScript(
         descriptor: ScriptDescriptor,
-        scriptFactory: (IrScriptSymbol) -> IrScript = { symbol: IrScriptSymbol -> IrScriptImpl(descriptor, symbol) }
+        scriptFactory: (IrScriptSymbol) -> IrScript = { symbol: IrScriptSymbol -> IrScriptImpl(descriptor, symbol, descriptor.name) }
     ): IrScript {
         return scriptSymbolTable.declare(
             descriptor,
@@ -434,7 +436,11 @@ open class SymbolTable : ReferenceSymbolTable {
 
     override fun referenceValueParameter(descriptor: ParameterDescriptor) =
         valueParameterSymbolTable.referenced(descriptor) {
-            throw AssertionError("Undefined parameter referenced: $descriptor\n${valueParameterSymbolTable.dump()}")
+            if (descriptor.containingDeclaration is ScriptDescriptor) {
+                scriptSymbolTable.referenced(descriptor.containingDeclaration as ScriptDescriptor) { error("  ") } .owner.thisReceiver.symbol
+            } else {
+                throw AssertionError("Undefined parameter referenced: $descriptor\n${valueParameterSymbolTable.dump()}")
+            }
         }
 
     override fun referenceTypeParameter(classifier: TypeParameterDescriptor): IrTypeParameterSymbol =

@@ -8,7 +8,7 @@ package org.jetbrains.kotlin.ir.declarations
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
 
-interface IrScript : IrSymbolDeclaration<IrScriptSymbol>, IrDeclarationContainer, IrDeclaration, IrDeclarationParent {
+interface IrScript : IrSymbolDeclaration<IrScriptSymbol>, IrDeclarationContainer, IrDeclarationWithName, IrDeclarationParent {
     val statements: MutableList<IrStatement>
     var thisReceiver: IrValueParameter
 }

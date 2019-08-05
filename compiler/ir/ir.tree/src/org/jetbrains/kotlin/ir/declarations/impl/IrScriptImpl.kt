@@ -14,13 +14,15 @@ import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
 import org.jetbrains.kotlin.ir.util.transform
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitor
+import org.jetbrains.kotlin.name.Name
 
 
 private val SCRIPT_ORIGIN = object : IrDeclarationOriginImpl("FIELD_FOR_OBJECT_INSTANCE") {}
 
 class IrScriptImpl(
     override val descriptor: ScriptDescriptor,
-    override val symbol: IrScriptSymbol
+    override val symbol: IrScriptSymbol,
+    override val name: Name
 ) : IrScript, IrDeclarationBase(UNDEFINED_OFFSET, UNDEFINED_OFFSET, SCRIPT_ORIGIN) {
     override lateinit var thisReceiver: IrValueParameter
 
@@ -30,6 +32,10 @@ class IrScriptImpl(
     override val annotations: MutableList<IrConstructorCall> = mutableListOf()
     override val metadata: MetadataSource? = null
     override lateinit var parent: IrDeclarationParent
+
+    init {
+        symbol.bind(this)
+    }
 
     override fun <R, D> accept(visitor: IrElementVisitor<R, D>, data: D): R {
         return visitor.visitScript(this, data)
