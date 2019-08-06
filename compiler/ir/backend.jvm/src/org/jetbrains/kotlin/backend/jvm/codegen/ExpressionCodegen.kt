@@ -105,9 +105,9 @@ class ExpressionCodegen(
 
     var finallyDepth = 0
 
-    val typeMapper = classCodegen.typeMapper
-
     val context = classCodegen.context
+    val typeMapper = context.typeMapper
+    val methodSignatureMapper = context.methodSignatureMapper
 
     private val state = classCodegen.state
 
@@ -173,7 +173,7 @@ class ExpressionCodegen(
             if (irFunction.origin != JvmLoweredDeclarationOrigin.CLASS_STATIC_INITIALIZER) {
                 irFunction.markLineNumber(startOffset = irFunction is IrConstructor && irFunction.isPrimary)
             }
-            val returnType = typeMapper.mapReturnType(irFunction)
+            val returnType = methodSignatureMapper.mapReturnType(irFunction)
             val returnIrType = if (irFunction !is IrConstructor) irFunction.returnType else context.irBuiltIns.unitType
             result.coerce(returnType, returnIrType).materialize()
             mv.areturn(returnType)
@@ -462,7 +462,7 @@ class ExpressionCodegen(
 
         val realField = expression.symbol.owner.resolveFakeOverride()!!
         val fieldType = typeMapper.mapType(realField.type)
-        val ownerType = typeMapper.mapImplementationOwner(expression.symbol.owner).internalName
+        val ownerType = methodSignatureMapper.mapImplementationOwner(expression.symbol.owner).internalName
         val fieldName = realField.name.asString()
         val isStatic = expression.receiver == null
         expression.markLineNumber(startOffset = true)
@@ -664,8 +664,9 @@ class ExpressionCodegen(
                 ?: (returnTarget as? IrReturnableBlock)?.inlineFunctionSymbol?.owner
                 ?: error("Unsupported IrReturnTarget: $returnTarget")
         //TODO: should be owner != irFunction
-        val isNonLocalReturn =
-            typeMapper.mapFunctionName(owner, OwnerKind.IMPLEMENTATION) != typeMapper.mapFunctionName(irFunction, OwnerKind.IMPLEMENTATION)
+        val isNonLocalReturn = methodSignatureMapper.mapFunctionName(
+            owner, OwnerKind.IMPLEMENTATION) != methodSignatureMapper.mapFunctionName(irFunction, OwnerKind.IMPLEMENTATION
+        )
         if (isNonLocalReturn && state.isInlineDisabled) {
             //TODO: state.diagnostics.report(Errors.NON_LOCAL_RETURN_IN_DISABLED_INLINE.on(expression))
             genThrow(
@@ -676,7 +677,7 @@ class ExpressionCodegen(
         }
 
         val target = data.findBlock<ReturnableBlockInfo> { it.returnSymbol == expression.returnTargetSymbol }
-        val returnType = typeMapper.mapReturnType(owner)
+        val returnType = methodSignatureMapper.mapReturnType(owner)
         val afterReturnLabel = Label()
         expression.value.accept(this, data).coerce(returnType, owner.returnType).materialize()
         generateFinallyBlocksIfNeeded(returnType, afterReturnLabel, data, target)
@@ -1083,7 +1084,7 @@ class ExpressionCodegen(
     }
 
     private fun resolveToCallable(irCall: IrFunctionAccessExpression, isSuper: Boolean): IrCallableMethod =
-        typeMapper.mapToCallableMethod(irCall.symbol.owner, isSuper)
+        methodSignatureMapper.mapToCallableMethod(irCall.symbol.owner, isSuper)
 
     private fun getOrCreateCallGenerator(element: IrFunctionAccessExpression, data: BlockInfo): IrCallGenerator {
         if (!element.symbol.owner.isInlineFunctionCall(context) ||
