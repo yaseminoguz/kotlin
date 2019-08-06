@@ -395,11 +395,7 @@ class ExpressionCodegen(
             addSuspendMarker(mv, isStartNotEnd = true)
         }
 
-        callGenerator.genCall(
-            callable,
-            this,
-            expression
-        )
+        callGenerator.genCall(callable, this, expression)
 
         val returnType = callee.returnType
 
@@ -420,9 +416,9 @@ class ExpressionCodegen(
                 immaterialUnitValue
             expression.type.isUnit() ->
                 // NewInference allows casting `() -> T` to `() -> Unit`. A CHECKCAST here will fail.
-                MaterialValue(this, callable.returnType, returnType).discard().coerce(expression.type)
+                MaterialValue(this, callable.asmMethod.returnType, returnType).discard().coerce(expression.type)
             else ->
-                MaterialValue(this, callable.returnType, returnType).coerce(expression.type)
+                MaterialValue(this, callable.asmMethod.returnType, returnType).coerce(expression.type)
         }
     }
 
@@ -1086,7 +1082,7 @@ class ExpressionCodegen(
         return classReference.onStack
     }
 
-    private fun resolveToCallable(irCall: IrFunctionAccessExpression, isSuper: Boolean) =
+    private fun resolveToCallable(irCall: IrFunctionAccessExpression, isSuper: Boolean): IrCallableMethod =
         typeMapper.mapToCallableMethod(irCall.symbol.owner, isSuper)
 
     private fun getOrCreateCallGenerator(element: IrFunctionAccessExpression, data: BlockInfo): IrCallGenerator {

@@ -16,20 +16,23 @@
 
 package org.jetbrains.kotlin.backend.jvm.codegen
 
-import org.jetbrains.kotlin.codegen.Callable
-import org.jetbrains.kotlin.codegen.CallableMethod
 import org.jetbrains.kotlin.codegen.StackValue
 import org.jetbrains.kotlin.codegen.ValueKind
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionAccessExpression
-import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.org.objectweb.asm.Type
 
 interface IrCallGenerator {
 
-    fun genCall(callableMethod: Callable, codegen: ExpressionCodegen, expression: IrFunctionAccessExpression) {
-        callableMethod.genInvokeInstruction(codegen.mv)
+    fun genCall(callableMethod: IrCallableMethod, codegen: ExpressionCodegen, expression: IrFunctionAccessExpression) {
+        codegen.mv.visitMethodInsn(
+            callableMethod.invokeOpcode,
+            callableMethod.owner.internalName,
+            callableMethod.asmMethod.name,
+            callableMethod.asmMethod.descriptor,
+            callableMethod.isInterfaceMethod
+        )
     }
 
     fun beforeValueParametersStart() {
