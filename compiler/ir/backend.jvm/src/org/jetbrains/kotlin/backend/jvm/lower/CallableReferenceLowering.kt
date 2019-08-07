@@ -354,9 +354,7 @@ internal class CallableReferenceLowering(private val context: JvmBackendContext)
             val superFunction = actualFunctionClass.owner.functions.find { it.name.asString() == "invoke" }!!
 
             // Only add a bridge method when necessary
-            if (context.state.typeMapper.mapAsmMethod(superFunction.descriptor) ==
-                context.state.typeMapper.mapAsmMethod(invoke.descriptor)
-            ) {
+            if (context.methodSignatureMapper.mapAsmMethod(superFunction) == context.methodSignatureMapper.mapAsmMethod(invoke)) {
                 invoke.overriddenSymbols += superFunction.symbol
                 return
             }

@@ -84,7 +84,7 @@ open class ClassCodegen protected constructor(
             signature.superclassName,
             signature.interfaces.toTypedArray()
         )
-        AnnotationCodegen(this, context.state, visitor.visitor::visitAnnotation).genAnnotations(irClass, null)
+        AnnotationCodegen(this, context, visitor.visitor::visitAnnotation).genAnnotations(irClass, null)
 
         val nestedClasses = irClass.declarations.mapNotNull { declaration ->
             if (declaration is IrClass) {
@@ -250,7 +250,7 @@ open class ClassCodegen protected constructor(
             fieldSignature, field.constantValue(implicitConst)?.value
         )
 
-        AnnotationCodegen(this, state, fv::visitAnnotation).genAnnotations(field, fieldType)
+        AnnotationCodegen(this, context, fv::visitAnnotation).genAnnotations(field, fieldType)
 
         val descriptor = field.metadata?.descriptor
         if (descriptor != null) {

@@ -54,18 +54,16 @@ internal class PropertyReferenceLowering(val context: JvmBackendContext) : Class
         get() = (this as? IrPropertyReference)?.field
 
     private val IrSimpleFunction.signature: String
-        get() = context.state.typeMapper.mapSignatureSkipGeneric(collectRealOverrides().first().descriptor).toString()
+        get() = context.methodSignatureMapper.mapSignatureSkipGeneric(collectRealOverrides().first()).toString()
 
     // Plain Java fields do not have a getter, but can be referenced nonetheless. The signature should be the one
     // that a getter would have, if it existed.
     private val IrField.signature: String
-        get() = "${JvmAbi.getterName(name.asString())}()${context.state.typeMapper.mapReturnType(descriptor)}"
+        get() = "${JvmAbi.getterName(name.asString())}()${context.methodSignatureMapper.mapReturnType(this)}"
 
     private val IrMemberAccessExpression.signature: String
-        get() = getter?.let { getter -> localPropertyIndices[getter]?.let { "<v#$it>" } } ?: getter?.owner?.signature ?: field!!.owner.signature
-
-    private val IrMemberAccessExpression.symbol: IrSymbol
-        get() = getter?.owner?.symbol ?: field!!.owner.symbol
+        get() = getter?.let { getter -> localPropertyIndices[getter]?.let { "<v#$it>" } }
+            ?: getter?.owner?.signature ?: field!!.owner.signature
 
     private val arrayItemGetter =
         context.ir.symbols.array.owner.functions.single { it.name.asString() == "get" }
